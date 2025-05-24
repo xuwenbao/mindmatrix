@@ -81,7 +81,7 @@ class OpenAIAdapter:
                     index=0,
                     message=Message(
                         role="assistant",
-                        content=response.content
+                        content=response.get_content_as_string(by_alias=True)
                     ),
                     finish_reason="stop"
                 )
