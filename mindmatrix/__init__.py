@@ -1,5 +1,5 @@
 from ._mindmatrix import MindMatrix
-from .agent_base import BaseAgent, BaseWorkflow, CustomRunResponse, Artifact
+from .agent_base import BaseAgent, BaseWorkflow, CustomRunResponse, Artifact, ZhipuAI, OpenAILike
 
 __all__ = [
     "MindMatrix",
@@ -7,4 +7,6 @@ __all__ = [
     "BaseWorkflow",
     "CustomRunResponse",
     "Artifact",
+    "ZhipuAI",
+    "OpenAILike",
 ]
