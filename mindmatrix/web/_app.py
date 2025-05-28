@@ -1,3 +1,5 @@
+from typing import Literal
+
 from loguru import logger
 from fastapi.responses import JSONResponse
 from fastapi import FastAPI, Request, Query
@@ -10,8 +12,13 @@ class AgentProvider:
     def __init__(self, mindmatrix):
         self.mindmatrix = mindmatrix
 
-    def __call__(self, agent_name: str = Query(...)):
-        return self.mindmatrix.get_agent(agent_name)
+    def __call__(self, agent_name: str = Query(...), type_: Literal["agent", "workflow"] = "agent"):
+        if type_ == "agent":
+            return self.mindmatrix.get_agent(agent_name)
+        elif type_ == "workflow":
+            return self.mindmatrix.get_workflow(agent_name)
+        else:
+            raise ValueError(f"Invalid type: {type_}, must be 'agent' or 'workflow'")
 
 
 def create_app(agent_provider: AgentProvider):

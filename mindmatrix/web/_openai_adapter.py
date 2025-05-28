@@ -5,6 +5,7 @@ from typing import AsyncGenerator, List, Optional, Any, Union, Dict
 
 from loguru import logger
 from pydantic import BaseModel, Field
+from agno.workflow import Workflow
 from agno.agent import Agent, RunResponse
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
@@ -195,4 +196,18 @@ class OpenAIAdapter:
         
         # 非流式输出
         response = await agent.arun(user_message)
+        return OpenAIAdapter.create_completion_response(response, request.model)
+    
+    @staticmethod
+    async def handle_workflow_chat_request(workflow: Workflow, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, StreamingResponse]:
+        """处理聊天请求，返回适当的响应类型"""
+        # 提取用户消息
+        user_message = OpenAIAdapter.extract_user_message(request)
+        
+        # 如果请求流式输出
+        if request.stream:
+            raise NotImplementedError("Streaming response is not supported for workflow")
+        
+        # 非流式输出
+        response = workflow.run(user_message)
         return OpenAIAdapter.create_completion_response(response, request.model)

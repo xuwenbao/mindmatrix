@@ -72,7 +72,7 @@ class BaseWorkflow(Workflow):
                 value.workflow = self
                 value.session_id = self.session_id
 
-    def run_workflow(self, **kwargs: Any):
+    def run_workflow(self, *args: Any, **kwargs: Any):
         """Run the Workflow"""
 
         # Set mode, debug, workflow_id, session_id, initialize memory
@@ -98,7 +98,7 @@ class BaseWorkflow(Workflow):
         log_debug(f"Workflow Run Start: {self.run_id}", center=True)
         try:
             self._subclass_run = cast(Callable, self._subclass_run)
-            result = self._subclass_run(**kwargs)
+            result = self._subclass_run(*args, **kwargs)
         except Exception as e:
             logger.error(f"Workflow.run() failed: {e}")
             raise e

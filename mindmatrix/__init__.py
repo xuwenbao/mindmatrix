@@ -1,6 +1,6 @@
 from ._mindmatrix import MindMatrix
 from .agent_base import BaseAgent, BaseWorkflow, CustomRunResponse, Artifact, ZhipuAI, OpenAILike
-from .utils.http_client import AsyncHttpClient
+from .utils.http_client import AsyncHttpClient, SyncHttpClient
 
 __all__ = [
     "MindMatrix",
@@ -11,4 +11,5 @@ __all__ = [
     "ZhipuAI",
     "OpenAILike",
     "AsyncHttpClient",
+    "SyncHttpClient",
 ]

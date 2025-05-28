@@ -3,8 +3,7 @@ from typing import Union, Callable, List, Dict, Any
 
 from fastapi import FastAPI
 from agno.agent import Agent
-from agno.models.base import Model
-from agno.storage.base import Storage
+from agno.workflow import Workflow
 
 from .web import create_app, AgentProvider
 
@@ -80,8 +79,11 @@ class MindMatrix:
         self,
         workflow_name: str,
         workflow_factory: Callable,
-        workflow_config: Dict[str, Any],
+        workflow_config: Dict[str, Any] = None,
     ) -> None:
+        if workflow_config is None:
+            workflow_config = {}
+        
         self._workflow_factories.append(
             WorkflowRegistration(name=workflow_name, workflow_factory=workflow_factory, workflow_config=workflow_config)
         )
@@ -96,9 +98,12 @@ class MindMatrix:
                 return factory.agent_factory(**factory.agent_config, **kwargs)
         raise ValueError(f"Agent factory for {agent_name} not found")
     
-    def get_workflow(self, workflow_name: str) -> Callable:
-        # for factory in self._workflow_factories:
-        #     if factory.name == workflow_name:
-        #         return factory.workflow_factory
-        # raise ValueError(f"Workflow factory for {workflow_name} not found")
-        ...
+    def get_workflow(
+        self,
+        workflow_name: str,
+        **kwargs,
+    ) -> Workflow:
+        for factory in self._workflow_factories:
+            if factory.name == workflow_name:
+                return factory.workflow_factory(**factory.workflow_config)
+        raise ValueError(f"Workflow factory for {workflow_name} not found")
