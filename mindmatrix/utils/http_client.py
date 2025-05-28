@@ -1,5 +1,7 @@
 import httpx
+from loguru import logger
 from urllib.parse import urljoin
+
 
 class AsyncHttpClient:
     def __init__(self, base_url=None, headers=None, timeout=10):
@@ -16,7 +18,7 @@ class AsyncHttpClient:
 
     def _build_url(self, path):
         if self.base_url:
-            return urljoin(self.base_url, path)
+            return urljoin(self.base_url.rstrip('/') + '/', path.lstrip('/'))
         return path
 
     async def _request(self, method, url, **kwargs):
@@ -34,6 +36,7 @@ class AsyncHttpClient:
 
     async def _get(self, path, params=None, **kwargs):
         url = self._build_url(path)
+        logger.info(f"GET {url} with params: {params}")
         return await self._request("GET", url, params=params, **kwargs)
 
     async def _post(self, path, data=None, json=None, **kwargs):
