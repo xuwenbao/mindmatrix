@@ -12,14 +12,7 @@ agno = "^1.5.6"
 openai = "^1.65.4"
 sse-starlette = "^2.2.1"
 httpx = {extras = ["socks"], version = "^0.28.1"}
-
-[tool.poetry.group.worker]
-optional = true
-
-[tool.poetry.group.worker.dependencies]
 prefect = "^3.4.4"
-prefect-aws = "^0.5.10"
-pymilvus = "^2.5.10"
 
 [build-system]
 requires = ["poetry-core"]
