@@ -116,3 +116,14 @@ class Milvus(VectorDb):
         logger.debug(f"async upsert {len(documents)} to collection[{collection}]")
         client = await self._async_get_client(collection)
         await client.async_upsert(documents, filters)
+
+    async def async_search(
+        self,
+        collection: str,
+        query: str, 
+        limit: int = 5, 
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Document]:
+        logger.debug(f"async search query: {query} on collection[{collection}]")
+        client = await self._async_get_client(collection)
+        return await client.async_search(query, limit, filters)
