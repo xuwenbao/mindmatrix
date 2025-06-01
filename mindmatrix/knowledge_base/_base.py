@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional, List, Dict, Any, Literal
 
+from loguru import logger
 from agno.reranker.base import Reranker
 from agno.vectordb.search import SearchType
 from agno.document import Document as Document_
@@ -15,7 +16,7 @@ class Document(Document_):
 
 @dataclass
 class OpenAIEmbedder(OpenAIEmbedder_):
-    ...
+    dimensions: int = 1024
 
 
 @dataclass
@@ -52,8 +53,9 @@ class Milvus(VectorDb):
         self._sparse_vector_dimensions = sparse_vector_dimensions
         self._kwargs = kwargs
 
-    def _get_client(self, collection: str) -> Milvus_:
-        return Milvus_(
+    async def _async_get_client(self, collection: str) -> Milvus_:
+        logger.debug(f"get client for collection: {collection}")
+        client = Milvus_(
             collection=collection,
             embedder=self._embedder,
             uri=self._uri,
@@ -63,6 +65,8 @@ class Milvus(VectorDb):
             sparse_vector_dimensions=self._sparse_vector_dimensions,
             **self._kwargs,
         )
+        await client.async_create()
+        return client
     
     def insert(
         self, 
@@ -70,7 +74,7 @@ class Milvus(VectorDb):
         documents: List[Document], 
         filters: Optional[Dict[str, Any]] = None
     ) -> None:
-        self._get_client(collection).insert(documents, filters)
+        self._async_get_client(collection).insert(documents, filters)
 
     async def async_insert(
         self, 
@@ -78,7 +82,7 @@ class Milvus(VectorDb):
         documents: List[Document], 
         filters: Optional[Dict[str, Any]] = None
     ) -> None:
-        await self._get_client(collection).async_insert(documents, filters)
+        await self._async_get_client(collection).async_insert(documents, filters)
 
     def upsert(
         self, 
@@ -86,7 +90,7 @@ class Milvus(VectorDb):
         documents: List[Document], 
         filters: Optional[Dict[str, Any]] = None
     ) -> None:
-        self._get_client(collection).upsert(documents, filters)
+        self._async_get_client(collection).upsert(documents, filters)
     
     async def async_upsert(
         self, 
@@ -94,4 +98,6 @@ class Milvus(VectorDb):
         documents: List[Document], 
         filters: Optional[Dict[str, Any]] = None
     ) -> None:
-        await self._get_client(collection).async_upsert(documents, filters)
+        logger.debug(f"async upsert {len(documents)} to collection[{collection}]")
+        client = await self._async_get_client(collection)
+        await client.async_upsert(documents, filters)

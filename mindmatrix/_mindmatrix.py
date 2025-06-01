@@ -2,6 +2,7 @@ import inspect
 from dataclasses import dataclass
 from typing import Union, Callable, List, Dict, Any
 
+from loguru import logger
 from fastapi import FastAPI
 from prefect import flow
 from prefect.tasks import Task
@@ -159,7 +160,7 @@ class MindMatrix:
                 return registration.task
         raise ValueError(f"Task for {task_name} not found")
     
-    @flow
+    # @flow
     async def async_run_task(
         self,
         task_name: str,
@@ -167,6 +168,7 @@ class MindMatrix:
         **kwargs,
     ) -> Any:
         task = self.get_task(task_name)
+        logger.debug(f"* Running task: {task_name}")
         # 获取task函数的参数信息
         sig = inspect.signature(task.fn)
         
@@ -176,4 +178,4 @@ class MindMatrix:
             vectordb_provider = VectorDbProvider(self)
             kwargs['vectordb_provider'] = vectordb_provider
         
-        return await task.submit(*args, **kwargs)
+        return await task.fn(*args, **kwargs)
