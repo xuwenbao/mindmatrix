@@ -53,6 +53,21 @@ class Milvus(VectorDb):
         self._sparse_vector_dimensions = sparse_vector_dimensions
         self._kwargs = kwargs
 
+    def _get_client(self, collection: str) -> Milvus_:
+        logger.debug(f"get client for collection: {collection}")
+        client = Milvus_(
+            collection=collection,
+            embedder=self._embedder,
+            uri=self._uri,
+            token=self._token,
+            search_type=self._search_type,
+            reranker=self._reranker,
+            sparse_vector_dimensions=self._sparse_vector_dimensions,
+            **self._kwargs,
+        )
+        client.create()
+        return client
+
     async def _async_get_client(self, collection: str) -> Milvus_:
         logger.debug(f"get client for collection: {collection}")
         client = Milvus_(
@@ -74,7 +89,7 @@ class Milvus(VectorDb):
         documents: List[Document], 
         filters: Optional[Dict[str, Any]] = None
     ) -> None:
-        self._async_get_client(collection).insert(documents, filters)
+        self._get_client(collection).insert(documents, filters)
 
     async def async_insert(
         self, 
@@ -90,7 +105,7 @@ class Milvus(VectorDb):
         documents: List[Document], 
         filters: Optional[Dict[str, Any]] = None
     ) -> None:
-        self._async_get_client(collection).upsert(documents, filters)
+        self._get_client(collection).upsert(documents, filters)
     
     async def async_upsert(
         self, 
