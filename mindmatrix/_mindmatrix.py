@@ -1,5 +1,7 @@
 import inspect
+import traceback
 from dataclasses import dataclass
+from importlib.metadata import entry_points
 from typing import Union, Callable, List, Dict, Any
 
 from loguru import logger
@@ -44,6 +46,31 @@ class TaskRegistration:
     task: Task
 
 
+_plugins: Union[None, List[Any]] = None  # If None, plugins have not been loaded yet.
+
+
+def _load_plugins() -> Union[None, List[Any]]:
+    """Lazy load plugins, exiting early if already loaded."""
+    global _plugins
+
+    # Skip if we've already loaded plugins
+    if _plugins is not None:
+        return _plugins
+
+    # Load plugins
+    _plugins = []
+    for entry_point in entry_points(group="mindmatrix.plugin"):
+        try:
+            _plugins.append(entry_point.load())
+        except Exception:
+            tb = traceback.format_exc()
+            logger.warning(f"Plugin '{entry_point.name}' failed to load ... skipping:\n{tb}")
+
+    logger.info(f"load plugins: {_plugins}")
+
+    return _plugins
+
+
 class MindMatrix:
     def __init__(
         self,
@@ -83,7 +110,19 @@ class MindMatrix:
         self.register_task(task_name="embed_documents", task=embed_documents)
 
     def enable_plugins(self, **kwargs) -> None:
-        ...
+        if not self._plugins_enabled:
+            # Load plugins
+            plugins = _load_plugins()
+            assert plugins is not None
+            for plugin in plugins:
+                try:
+                    plugin.register_plugin(self, **kwargs)
+                except Exception:
+                    tb = traceback.format_exc()
+                    logger.warning(f"Plugin '{plugin}' failed to register plugin:\n{tb}")
+            self._plugins_enabled = True
+        else:
+            logger.warning("Plugins are already enabled.")
 
     def register_vectordb(
         self,
