@@ -212,8 +212,9 @@ class MindMatrix:
         
         # 检查参数中是否包含vectordb_provider
         if 'vectordb_provider' in sig.parameters:
-            # 创建VectorDbProvider实例
-            vectordb_provider = VectorDbProvider(self)
-            kwargs['vectordb_provider'] = vectordb_provider
+            kwargs['vectordb_provider'] = VectorDbProvider(self)
+
+        if 'agent_provider' in sig.parameters:
+            kwargs['agent_provider'] = AgentProvider(self)
         
         return await task.fn(*args, **kwargs)
