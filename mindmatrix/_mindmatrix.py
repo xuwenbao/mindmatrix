@@ -61,12 +61,11 @@ def _load_plugins() -> Union[None, List[Any]]:
     _plugins = []
     for entry_point in entry_points(group="mindmatrix.plugin"):
         try:
+            logger.info(f"load plugin: {entry_point.name}")
             _plugins.append(entry_point.load())
         except Exception:
             tb = traceback.format_exc()
             logger.warning(f"Plugin '{entry_point.name}' failed to load ... skipping:\n{tb}")
-
-    logger.info(f"load plugins: {_plugins}")
 
     return _plugins
 
