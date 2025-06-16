@@ -1,11 +1,19 @@
+import inspect
+from uuid import uuid4
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Callable, cast, AsyncIterator, AsyncGenerator, get_args
 
 from pydantic import Field
 from agno.media import Media
 from agno.agent import Agent
+from agno.team.team import Team
 from agno.workflow import Workflow
-from agno.run.response import RunResponse
+from agno.memory.v2.memory import Memory
+from agno.utils.log import log_debug, logger
+from agno.run.team import TeamRunResponseEvent
+from agno.run.workflow import WorkflowRunResponseEvent
+from agno.run.response import RunResponse, RunResponseEvent
+from agno.memory.workflow import WorkflowMemory, WorkflowRun
 
 from ..web import get_current_workflow
 
@@ -74,130 +82,114 @@ class BaseWorkflow(Workflow):
     #             value.workflow = self
     #             value.session_id = self.session_id
 
-    # def run_workflow(self, *args: Any, **kwargs: Any):
-    #     """Run the Workflow"""
+    async def arun_workflow(self, **kwargs: Any):
+        """Run the Workflow asynchronously"""
 
-    #     # Set mode, debug, workflow_id, session_id, initialize memory
-    #     self.set_storage_mode()
-    #     self.set_debug()
-    #     self.set_workflow_id()
-    #     self.set_session_id()
-    #     self.initialize_memory()
+        # Set mode, debug, workflow_id, session_id, initialize memory
+        self.set_storage_mode()
+        self.set_debug()
+        self.set_monitoring()
+        self.set_workflow_id()  # Ensure workflow_id is set
+        self.set_session_id()
+        self.initialize_memory()
 
-    #     # Create a run_id
-    #     self.run_id = str(uuid4())
+        # Update workflow_id for all agents before registration
+        for field_name, value in self.__class__.__dict__.items():
+            if isinstance(value, Agent):
+                value.initialize_agent()
+                value.workflow_id = self.workflow_id
 
-    #     # Set run_input, run_response
-    #     self.run_input = kwargs
-    #     self.run_response = RunResponse(run_id=self.run_id, session_id=self.session_id, workflow_id=self.workflow_id)
+            if isinstance(value, Team):
+                value.initialize_team()
+                value.workflow_id = self.workflow_id
 
-    #     # Read existing session from storage
-    #     self.read_from_storage()
+        # Register the workflow, which will also register agents and teams
+        await self.aregister_workflow()
 
-    #     # Update the session_id for all Agent instances
-    #     self.update_agent_session_ids()
+        # Create a run_id
+        self.run_id = str(uuid4())
 
-    #     log_debug(f"Workflow Run Start: {self.run_id}", center=True)
-    #     try:
-    #         self._subclass_run = cast(Callable, self._subclass_run)
-    #         result = self._subclass_run(*args, **kwargs)
-    #     except Exception as e:
-    #         logger.error(f"Workflow.run() failed: {e}")
-    #         raise e
+        # Set run_input, run_response
+        self.run_input = kwargs
+        self.run_response = RunResponse(run_id=self.run_id, session_id=self.session_id, workflow_id=self.workflow_id)
 
-    #     # The run_workflow() method handles both Iterator[RunResponse] and RunResponse
-    #     # 临时添加异步迭代器类型处理
-    #     if isinstance(result, collections.abc.AsyncIterator):
-    #         # Initialize the run_response content
-    #         self.run_response.content = ""
+        # Read existing session from storage
+        self.read_from_storage()
 
-    #         async def async_result_generator():
-    #             self.run_response = cast(RunResponse, self.run_response)
-    #             if isinstance(self.memory, WorkflowMemory):
-    #                 self.memory = cast(WorkflowMemory, self.memory)
-    #             elif isinstance(self.memory, Memory):
-    #                 self.memory = cast(Memory, self.memory)
+        # Update the session_id for all Agent instances
+        self.update_agent_session_ids()
 
-    #             async for item in result:
-    #                 if isinstance(item, RunResponse):
-    #                     # Update the run_id, session_id and workflow_id of the RunResponse
-    #                     item.run_id = self.run_id
-    #                     item.session_id = self.session_id
-    #                     item.workflow_id = self.workflow_id
+        log_debug(f"Workflow Run Start: {self.run_id}", center=True)
+        try:
+            self._subclass_run = cast(Callable, self._subclass_run)
+            result = self._subclass_run(**kwargs)
+            # 如果 result 是异步的，则等待结果
+            if inspect.isawaitable(result):
+                result = await result
+        except Exception as e:
+            logger.error(f"Workflow.arun() failed: {e}")
+            raise e
 
-    #                     # Update the run_response with the content from the result
-    #                     if item.content is not None and isinstance(item.content, str):
-    #                         self.run_response.content += item.content
-    #                 else:
-    #                     logger.warning(f"Workflow.run() should only yield RunResponse objects, got: {type(item)}")
-    #                 yield item
+        # Handle async iterator results
+        if isinstance(result, (AsyncIterator, AsyncGenerator)):
+            # Initialize the run_response content
+            self.run_response.content = ""
 
-    #             # Add the run to the memory
-    #             if isinstance(self.memory, WorkflowMemory):
-    #                 self.memory.add_run(WorkflowRun(input=self.run_input, response=self.run_response))
-    #             elif isinstance(self.memory, Memory):
-    #                 self.memory.add_run(session_id=self.session_id, run=self.run_response)  # type: ignore
-    #             # Write this run to the database
-    #             self.write_to_storage()
-    #             log_debug(f"Workflow Run End: {self.run_id}", center=True)
+            async def result_generator():
+                self.run_response = cast(RunResponse, self.run_response)
+                if isinstance(self.memory, WorkflowMemory):
+                    self.memory = cast(WorkflowMemory, self.memory)
+                elif isinstance(self.memory, Memory):
+                    self.memory = cast(Memory, self.memory)
 
-    #         return async_result_generator
-    #     # Case 1: The run method returns an Iterator[RunResponse]
-    #     elif isinstance(result, (GeneratorType, collections.abc.Iterator)):
-    #         # Initialize the run_response content
-    #         self.run_response.content = ""
+                async for item in result:
+                    if (
+                        isinstance(item, tuple(get_args(RunResponseEvent)))
+                        or isinstance(item, tuple(get_args(TeamRunResponseEvent)))
+                        or isinstance(item, tuple(get_args(WorkflowRunResponseEvent)))
+                    ):
+                        # Update the run_id, session_id and workflow_id of the RunResponseEvent
+                        item.run_id = self.run_id
+                        item.session_id = self.session_id
+                        item.workflow_id = self.workflow_id
 
-    #         def result_generator():
-    #             self.run_response = cast(RunResponse, self.run_response)
-    #             if isinstance(self.memory, WorkflowMemory):
-    #                 self.memory = cast(WorkflowMemory, self.memory)
-    #             elif isinstance(self.memory, Memory):
-    #                 self.memory = cast(Memory, self.memory)
+                        # Update the run_response with the content from the result
+                        if hasattr(item, "content") and item.content is not None and isinstance(item.content, str):
+                            self.run_response.content += item.content
+                    else:
+                        logger.warning(f"Workflow.arun() should only yield RunResponseEvent objects, got: {type(item)}")
+                    yield item
 
-    #             for item in result:
-    #                 if isinstance(item, RunResponse):
-    #                     # Update the run_id, session_id and workflow_id of the RunResponse
-    #                     item.run_id = self.run_id
-    #                     item.session_id = self.session_id
-    #                     item.workflow_id = self.workflow_id
+                # Add the run to the memory
+                if isinstance(self.memory, WorkflowMemory):
+                    self.memory.add_run(WorkflowRun(input=self.run_input, response=self.run_response))
+                elif isinstance(self.memory, Memory):
+                    self.memory.add_run(session_id=self.session_id, run=self.run_response)  # type: ignore
+                # Write this run to the database
+                self.write_to_storage()
+                log_debug(f"Workflow Run End: {self.run_id}", center=True)
 
-    #                     # Update the run_response with the content from the result
-    #                     if item.content is not None and isinstance(item.content, str):
-    #                         self.run_response.content += item.content
-    #                 else:
-    #                     logger.warning(f"Workflow.run() should only yield RunResponse objects, got: {type(item)}")
-    #                 yield item
+            return result_generator()
+        # Handle single RunResponse result
+        elif isinstance(result, RunResponse):
+            # Update the result with the run_id, session_id and workflow_id of the workflow run
+            result.run_id = self.run_id
+            result.session_id = self.session_id
+            result.workflow_id = self.workflow_id
 
-    #             # Add the run to the memory
-    #             if isinstance(self.memory, WorkflowMemory):
-    #                 self.memory.add_run(WorkflowRun(input=self.run_input, response=self.run_response))
-    #             elif isinstance(self.memory, Memory):
-    #                 self.memory.add_run(session_id=self.session_id, run=self.run_response)  # type: ignore
-    #             # Write this run to the database
-    #             self.write_to_storage()
-    #             log_debug(f"Workflow Run End: {self.run_id}", center=True)
+            # Update the run_response with the content from the result
+            if result.content is not None and isinstance(result.content, str):
+                self.run_response.content = result.content
 
-    #         return result_generator
-    #     # Case 2: The run method returns a RunResponse
-    #     elif isinstance(result, RunResponse):
-    #         # Update the result with the run_id, session_id and workflow_id of the workflow run
-    #         result.run_id = self.run_id
-    #         result.session_id = self.session_id
-    #         result.workflow_id = self.workflow_id
-
-    #         # Update the run_response with the content from the result
-    #         if result.content is not None and isinstance(result.content, str):
-    #             self.run_response.content = result.content
-
-    #         # Add the run to the memory
-    #         if isinstance(self.memory, WorkflowMemory):
-    #             self.memory.add_run(WorkflowRun(input=self.run_input, response=self.run_response))
-    #         elif isinstance(self.memory, Memory):
-    #             self.memory.add_run(session_id=self.session_id, run=self.run_response)  # type: ignore
-    #         # Write this run to the database
-    #         self.write_to_storage()
-    #         log_debug(f"Workflow Run End: {self.run_id}", center=True)
-    #         return result
-    #     else:
-    #         logger.warning(f"Workflow.run() should only return RunResponse objects, got: {type(result)}")
-    #         return None
+            # Add the run to the memory
+            if isinstance(self.memory, WorkflowMemory):
+                self.memory.add_run(WorkflowRun(input=self.run_input, response=self.run_response))
+            elif isinstance(self.memory, Memory):
+                self.memory.add_run(session_id=self.session_id, run=self.run_response)  # type: ignore
+            # Write this run to the database
+            self.write_to_storage()
+            log_debug(f"Workflow Run End: {self.run_id}", center=True)
+            return result
+        else:
+            logger.warning(f"Workflow.arun() should only return RunResponse objects, got: {type(result)}")
+            return None
