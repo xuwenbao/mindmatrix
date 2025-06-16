@@ -3,6 +3,8 @@ from ._contextvars import (
     set_current_session_id,
     get_current_jwt_token,
     set_current_jwt_token,
+    get_current_workflow,
+    set_current_workflow,
 )
 from ._endpoints import router
 from ._app import create_app, AgentProvider
@@ -17,6 +19,8 @@ __all__ = [
     "set_current_session_id",
     "get_current_jwt_token",
     "set_current_jwt_token",
+    "get_current_workflow",
+    "set_current_workflow",
     "get_api_key",
     "OpenAIAdapter",
     "ChatCompletionRequest",

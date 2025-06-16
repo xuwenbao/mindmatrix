@@ -5,6 +5,7 @@ from loguru import logger
 # 创建上下文变量
 session_id_var = contextvars.ContextVar("session_id", default=None)
 jwt_token_var = contextvars.ContextVar("jwt_token", default=None)
+workflow_var = contextvars.ContextVar("workflow", default=None)
 
 
 def get_current_session_id():
@@ -28,3 +29,12 @@ def set_current_jwt_token(token: str):
     """
     logger.debug(f"set current jwt token: {token}")
     jwt_token_var.set(token)
+
+
+def get_current_workflow():
+    return workflow_var.get()
+
+
+def set_current_workflow(workflow):
+    workflow_var.set(workflow)
+
