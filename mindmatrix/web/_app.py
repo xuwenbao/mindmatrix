@@ -12,11 +12,16 @@ class AgentProvider:
     def __init__(self, mindmatrix):
         self.mindmatrix = mindmatrix
 
-    def __call__(self, agent_name: str = Query(...), type_: Literal["agent", "workflow"] = "agent"):
+    def __call__(
+        self,
+        agent_name: str = Query(...),
+        type_: Literal["agent", "workflow"] = "agent",
+        **kwargs,
+    ):
         if type_ == "agent":
-            return self.mindmatrix.get_agent(agent_name)
+            return self.mindmatrix.get_agent(agent_name, **kwargs)
         elif type_ == "workflow":
-            return self.mindmatrix.get_workflow(agent_name)
+            return self.mindmatrix.get_workflow(agent_name, **kwargs)
         else:
             raise ValueError(f"Invalid type: {type_}, must be 'agent' or 'workflow'")
 
