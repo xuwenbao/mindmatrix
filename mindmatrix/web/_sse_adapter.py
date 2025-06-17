@@ -64,9 +64,9 @@ class SSEAdapter:
 
         # 根据type选择对应的处理方法
         if type == "agent":
-            async_gen = handler.arun(user_message, stream=input.stream)
+            async_gen = await handler.arun(user_message, stream=input.stream)
         else:
-            async_gen = handler.arun_workflow(user_message, stream=input.stream)
+            async_gen = await handler.arun_workflow(query=user_message, stream=input.stream)
 
         async for chunk in async_gen:
             if await request.is_disconnected():
