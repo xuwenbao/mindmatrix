@@ -33,6 +33,96 @@ async def sse_chat_completions(
     input: SSEChatCompletionRequest,
     type: Literal["agent", "workflow"],
 ):
+    """
+    智能聊天接口，支持流式响应和会话管理。
+
+    ## 功能描述
+    此接口实现了Coordinator智能体路由和对话功能，支持流式响应和会话管理。
+
+    ## 请求参数
+
+    ### Headers
+    暂无
+
+    ### Query
+    - type: 可选，类型，值为 "agent" 或 "workflow"，默认值为 "agent"
+
+    ### Body
+    ```json
+    {
+        "messages": [
+            {
+                "role": "string",  # 消息发送者角色，如 "user" 或 "assistant"
+                "content": "string"  # 消息内容
+            }
+        ],
+        "session_id": "string",  # 可选的会话ID，用于继续已有对话
+        "stream": boolean  # 是否启用流式响应
+    }
+    ```
+
+    ## 响应说明
+    ### 成功响应 (200 OK)
+    - 流式响应格式 (SSE):
+        - 事件类型: "stream" - 实时文本响应
+          事件内容示例:
+          ```json
+            {
+                "event": "stream",
+                "data": "{\"delta\": \"你好，这里是AI的回复内容...\"}"
+            }
+          ```
+        - 事件类型: "artifact" - 结构化数据响应
+          事件内容示例:
+          ```json
+            {
+                "event": "artifact",
+                "data": "{\"type\": \"agents\", \"content\": [{\"id\": \"agent1\", \"name\": \"智能体A\"}, {\"id\": \"agent2\", \"name\": \"智能体B\"}]}"
+            }
+          ```
+
+    ### 错误响应
+    - 400 Bad Request: 请求参数无效
+    - 401 Unauthorized: API密钥无效或 Bearer token 缺失
+
+    ### 调用示例代码
+    ```python
+    import json
+    import httpx
+    from sse_starlette.sse import aconnect_sse
+
+
+    url = f"<server endpoint>/mm/v1/sse/workflow/chat/completions"
+    payload = {
+        "model": "agent_router",
+        "messages": [{"role": "user", "content": <query>}],
+        "session_id": <session_id>,
+        "stream": True,
+    }
+    headers = {
+        "Content-Type": "application/json",
+    }
+
+    logger.debug(f"payload: {payload}")
+    
+    # 使用httpx-sse库进行异步SSE连接
+    async with httpx.AsyncClient(timeout=None) as client:
+        async with aconnect_sse(client, "POST", url, json=payload, headers=headers) as event_source:
+            async for sse in event_source.aiter_sse():
+                logger.info(f"SSE {sse.event} 事件(type: {type(sse.data)}): {sse.data}")
+                
+                try:
+                    if sse.event == "stream":
+                        chunk = json.loads(sse.data)
+                        ... # 处理流式响应
+                    elif sse.event == "artifact":
+                        ... # 处理结构化数据响应
+                except json.JSONDecodeError as e:
+                    logger.warning(f"无法解析JSON数据: {sse.data}")
+                    logger.exception(e)
+                    ... # 处理错误响应
+    ```
+    """
     logger.debug(f"Received request: {input}")
 
     # 如果session_id为空，则生成一个新的session_id
