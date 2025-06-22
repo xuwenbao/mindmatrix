@@ -123,11 +123,23 @@ class MindMatrix:
         else:
             logger.warning("Plugins are already enabled.")
 
+    def has_vectordb(self, vectordb_name: str) -> bool:
+        return any(registration.name == vectordb_name for registration in self._vectordbs)
+    
+    def has_agent(self, agent_name: str) -> bool:
+        return any(registration.name == agent_name for registration in self._agent_factories)
+    
+    def has_workflow(self, workflow_name: str) -> bool:
+        return any(registration.name == workflow_name for registration in self._workflow_factories)
+
     def register_vectordb(
         self,
         vectordb_name: str,
         vectordb: VectorDb,
     ) -> None:
+        if self.has_vectordb(vectordb_name):
+            logger.warning(f"Vector database for {vectordb_name} already registered.")
+
         self._vectordbs.append(VectorDbRegistration(name=vectordb_name, vector_db=vectordb))
 
     def register_agent_factory(
@@ -136,6 +148,9 @@ class MindMatrix:
         agent_factory: Callable,
         agent_config: Dict[str, Any],
     ) -> None:
+        if self.has_agent(agent_name):
+            logger.warning(f"Agent factory for {agent_name} already registered.")
+            
         self._agent_factories.append(
             AgentRegistration(name=agent_name, agent_factory=agent_factory, agent_config=agent_config)
         )
@@ -146,6 +161,9 @@ class MindMatrix:
         workflow_factory: Callable,
         workflow_config: Dict[str, Any] = None,
     ) -> None:
+        if self.has_workflow(workflow_name):
+            logger.warning(f"Workflow factory for {workflow_name} already registered.")
+            
         if workflow_config is None:
             workflow_config = {}
         
