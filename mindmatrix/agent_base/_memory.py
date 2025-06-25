@@ -140,16 +140,67 @@ async def aadd_messages(
     session_id: Optional[str] = None,
     agent_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
-) -> List[Dict[str, str]]:
-    """Add memory to Mem0"""
-    return await client.add_messages(
-        message=message,
-        messages=messages,
-        user_id=user_id,
-        session_id=session_id,
-        agent_id=agent_id,
-        metadata=metadata,
-    )
+) -> List[Dict[str, Any]]:
+    """Add memory to Mem0
+    Args:
+        metadata (Optional[Dict[str, Any]]): Metadata to store with the memory.
+            There's a bug in Chroma DB preventing passing user_id and session_id at the same time:
+            https://github.com/chroma-core/chroma/issues/3248
+            This affects all mem0 functions - search, get_all, add, and etc.
+            If there's error calling mem0 queries, will try again with extra info stored in metadata.
+    Returns:
+        List[Dict[str, Any]]: List of responses from Mem0 (multiple entries may be created for one message) of format:
+            {
+                'id': 'Memory ID',
+                'event': 'ADD',
+                'memory': 'Content of memory',
+            }
+    """
+    # Suppress warning messages from mem0 MemoryClient
+    kwargs = {"output_format": "v1.1"} if isinstance(client, MemoryClient) else {}
+
+    # Messages to be added to mem0
+    msgs = process_messages(message=message, messages=messages)
+
+    res = []
+    if user_id is None:
+        user_id = "default"
+
+    # Suppress warning messages from mem0
+    with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+        try:
+            res = client.add(
+                messages=msgs,
+                user_id=user_id,
+                run_id=session_id,
+                agent_id=agent_id,
+                metadata=metadata,
+                **kwargs,
+            )
+        except ValueError:
+            log_warning(
+                "Error calling mem0 add. Trying again with extra info stored in metadata."
+            )
+            try:
+                # Use same naming convention as in mem0
+                if not isinstance(metadata, dict):
+                    metadata = {}
+                if session_id:
+                    metadata["run_id"] = session_id
+                if agent_id:
+                    metadata["agent_id"] = agent_id
+                res = await client.add(
+                    messages=msgs,
+                    user_id=user_id,
+                    metadata=metadata,
+                    **kwargs,
+                )
+            except ValueError:
+                log_error("Error calling mem0 add with 2nd trial. Stop adding")
+
+    if isinstance(res, dict):
+        return res.get("results", [])
+    return res
 
 
 def to_user_memory(memory: dict) -> UserMemory:
