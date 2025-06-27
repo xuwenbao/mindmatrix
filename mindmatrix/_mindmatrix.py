@@ -204,7 +204,7 @@ class MindMatrix:
     ) -> Workflow:
         for registration in self._workflow_factories:
             if registration.name == workflow_name:
-                return registration.workflow_factory(**registration.workflow_config)
+                return registration.workflow_factory(**registration.workflow_config, **kwargs)
         raise ValueError(f"Workflow factory for {workflow_name} not found")
 
     def get_task(
