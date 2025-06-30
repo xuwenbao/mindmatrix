@@ -6,13 +6,12 @@ from typing import Union, Callable, List, Dict, Any
 
 from loguru import logger
 from fastapi import FastAPI
-from prefect import flow
 from prefect.tasks import Task
 from agno.agent import Agent
 from agno.workflow import Workflow
 
-from .tasks import embed_documents
 from .web import create_app, AgentProvider
+from .builtins_.tasks import embed_documents
 from .knowledge_base import VectorDb, VectorDbProvider
 
 

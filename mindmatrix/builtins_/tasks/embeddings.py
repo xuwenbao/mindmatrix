@@ -4,7 +4,7 @@ from loguru import logger
 from agno.document import Document
 from prefect import task, get_run_logger
 
-from ..knowledge_base import VectorDbProvider
+from mindmatrix.knowledge_base import VectorDbProvider
 
 
 @task(log_prints=True)
