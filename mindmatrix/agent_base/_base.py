@@ -23,7 +23,7 @@ class Artifact(Media):
 
 
 @dataclass
-class CustomRunResponse(RunResponse):
+class MindmatrixRunResponse(RunResponse):
     response_artifacts: Optional[List[Artifact]] = Field(default_factory=list)
 
 
