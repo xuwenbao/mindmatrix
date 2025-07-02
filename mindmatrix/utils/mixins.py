@@ -27,6 +27,7 @@ class MilvusAnnotatedResponseMixin:
         output_fields: List[str],
         content_field: str,
         *,
+        retrieve_query: str = None,
         use_reranker: bool = False,
         reranker: Optional[AsyncRerankerClient] = None,
         similarity_threshold: Optional[float] = None,
@@ -37,7 +38,7 @@ class MilvusAnnotatedResponseMixin:
         query = query[-1]["content"] if isinstance(query, list) else query
 
         docs = await cls._retrieve_documents(
-            query,
+            retrieve_query or query,
             embedder,
             milvus,
             collection_name,
@@ -89,18 +90,18 @@ class MilvusAnnotatedResponseMixin:
             output_fields=output_fields,
         )
         if res and len(res) > 0:
-            logger.debug(f"Found {len(res[0])} search results:")
+            logger.info(f"Found {len(res[0])} search results:")
             for i, item in enumerate(res[0]):
                 logger.debug(f"Result {i}: {pformat(item)}")
 
             if similarity_threshold is not None:
-                logger.debug(f"filtering docs by similarity threshold {similarity_threshold}")
+                logger.info(f"filtering docs by similarity threshold ({similarity_threshold})")
                 results = [
                     {key: item["entity"][key] for key in output_fields}
                     for item in res[0]
                     if item["distance"] >= similarity_threshold
                 ]
-                logger.debug(f"Found {len(results)} search results after filtering by similarity threshold {similarity_threshold}:")
+                logger.info(f"Found {len(results)} search results after filtering by similarity threshold ({similarity_threshold}):")
                 for i, item in enumerate(results):
                     logger.debug(f"Result {i}: {pformat(item)}")
 
@@ -135,7 +136,7 @@ class MilvusAnnotatedResponseMixin:
             
             results = await reranker_client.rerank(query=query, documents=documents)
             if results and len(results) > 0:
-                logger.debug(f"Found {len(results)} rerank results:")
+                logger.info(f"Found {len(results)} rerank results:")
                 for i, item in enumerate(results):
                     logger.debug(f"Rerank Result {i}: {pformat(item)}, doc: 「{documents[item['index']]}」")
 
