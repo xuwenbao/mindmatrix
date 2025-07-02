@@ -48,13 +48,12 @@ class MilvusAnnotatedResponseMixin:
             filter=filter,
             limit=limit,
         )
-        if len(docs) == 0:
-            logger.warning(f"No documents retrieved from milvus, using similarity threshold {similarity_threshold}")
 
         if use_reranker and len(docs) > 0:
             rerank_docs = [item[content_field] for item in docs]
             rerank_results = await cls._rerank_documents(reranker, query, rerank_docs)
             docs = [docs[item["index"]] for item in rerank_results]
+            logger.debug(f"reranked docs: {docs}")
         
         return docs
 
@@ -95,11 +94,17 @@ class MilvusAnnotatedResponseMixin:
                 logger.debug(f"Result {i}: {pformat(item)}")
 
             if similarity_threshold is not None:
-                return [
+                logger.debug(f"filtering docs by similarity threshold {similarity_threshold}")
+                results = [
                     {key: item["entity"][key] for key in output_fields}
                     for item in res[0]
                     if item["distance"] >= similarity_threshold
                 ]
+                logger.debug(f"Found {len(results)} search results after filtering by similarity threshold {similarity_threshold}:")
+                for i, item in enumerate(results):
+                    logger.debug(f"Result {i}: {pformat(item)}")
+
+                return results
             return [{key: item["entity"][key] for key in output_fields} for item in res[0]]
         else:
             logger.debug("No search results found")
@@ -133,8 +138,6 @@ class MilvusAnnotatedResponseMixin:
                 logger.debug(f"Found {len(results)} rerank results:")
                 for i, item in enumerate(results):
                     logger.debug(f"Rerank Result {i}: {pformat(item)}, doc: 「{documents[item['index']]}」")
-            else:
-                logger.warning("No rerank results found")
 
             return results
         except Exception as e:
