@@ -19,7 +19,8 @@ class MilvusAnnotatedResponseMixin:
     @classmethod
     async def annotated_response(
         cls, 
-        query: str,
+        retrieve_query: str,
+        reranker_query: str,
         embedder: Embedder,
         milvus: MilvusClient,
         collection_name: str,
@@ -27,7 +28,6 @@ class MilvusAnnotatedResponseMixin:
         output_fields: List[str],
         content_field: str,
         *,
-        retrieve_query: str = None,
         use_reranker: bool = False,
         reranker: Optional[AsyncRerankerClient] = None,
         similarity_threshold: Optional[float] = None,
@@ -35,10 +35,11 @@ class MilvusAnnotatedResponseMixin:
         filter: str = "",
         limit: int = 5,
     ) -> List[str]:
-        query = query[-1]["content"] if isinstance(query, list) else query
+        retrieve_query = retrieve_query[-1]["content"] if isinstance(retrieve_query, list) else retrieve_query
+        reranker_query = reranker_query[-1]["content"] if isinstance(reranker_query, list) else reranker_query
 
         docs = await cls._retrieve_documents(
-            retrieve_query or query,
+            retrieve_query,
             embedder,
             milvus,
             collection_name,
@@ -52,7 +53,7 @@ class MilvusAnnotatedResponseMixin:
 
         if use_reranker and len(docs) > 0:
             rerank_docs = [item[content_field] for item in docs]
-            rerank_results = await cls._rerank_documents(reranker, query, rerank_docs)
+            rerank_results = await cls._rerank_documents(reranker, reranker_query, rerank_docs)
             docs = [docs[item["index"]] for item in rerank_results]
             logger.debug(f"reranked docs: {docs}")
         
