@@ -24,6 +24,32 @@ class AsyncRerankerClient(AsyncHttpClient):
             "Content-Type": "application/json"
         }
 
+    async def score(self, instruction: str, queries: List[str], documents: List[str]) -> List[Dict[str, Any]]:
+        prefix = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
+        suffix = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+
+        query_template = "{prefix}<Instruct>: {instruction}\n<Query>: {query}\n"
+        document_template = "<Document>: {doc}{suffix}"
+
+        queries = [
+            query_template.format(prefix=prefix, instruction=instruction, query=query)
+            for query in queries
+        ]
+        documents = [
+            document_template.format(doc=doc, suffix=suffix) for doc in documents
+        ]
+
+        path = "/score"
+        payload = {
+            "model": self.model,
+            "text_1": queries,
+            "text_2": documents,
+            "truncate_prompt_tokens": -1,
+        }
+        response = await self._post(path, json=payload, headers=self.headers)
+        logger.debug(f"score response: {response}")
+        return response["data"]["data"]
+
     async def rerank(self, query: str, documents: List[str]) -> List[Dict[str, Any]]:
         """
         对文档进行重排序

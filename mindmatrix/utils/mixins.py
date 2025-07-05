@@ -19,6 +19,8 @@ class MilvusAnnotatedResponseMixin:
     @classmethod
     async def annotated_response(
         cls, 
+        instruction: str,
+        query: str,
         retrieve_query: str,
         reranker_query: str,
         embedder: Embedder,
@@ -53,7 +55,12 @@ class MilvusAnnotatedResponseMixin:
 
         if use_reranker and len(docs) > 0:
             rerank_docs = [item[content_field] for item in docs]
-            rerank_results = await cls._rerank_documents(reranker, reranker_query, rerank_docs)
+            rerank_results = await cls._rerank_documents(
+                instruction=instruction,
+                query=query,
+                documents=rerank_docs,
+                reranker_client=reranker,
+            )
             docs = [docs[item["index"]] for item in rerank_results]
             logger.debug(f"reranked docs: {docs}")
         
@@ -115,8 +122,9 @@ class MilvusAnnotatedResponseMixin:
     @classmethod
     async def _rerank_documents(
         cls,
-        reranker_client: AsyncRerankerClient,
+        instruction: str,
         query: str,
+        reranker_client: AsyncRerankerClient,
         documents: List[str],
     ) -> List[dict]:
         """
@@ -135,8 +143,14 @@ class MilvusAnnotatedResponseMixin:
         try:
             logger.info(f"Starting rerank for query: '{query}' with {len(documents)} documents")
             
-            results = await reranker_client.rerank(query=query, documents=documents)
+            results = await reranker_client.score(
+                instruction=instruction, 
+                queries=[query] * len(documents), 
+                documents=documents,
+            )
             if results and len(results) > 0:
+                # 按照score字段降序排序
+                results = sorted(results, key=lambda x: x.get('score', 0), reverse=True)
                 logger.info(f"Found {len(results)} rerank results:")
                 for i, item in enumerate(results):
                     logger.debug(f"Rerank Result {i}: {pformat(item)}, doc: 「{documents[item['index']]}」")
