@@ -48,7 +48,7 @@ class AsyncRerankerClient(AsyncHttpClient):
         }
         response = await self._post(path, json=payload, headers=self.headers)
         logger.debug(f"score response: {response}")
-        return response["data"]["data"]
+        return response["data"]["data"] # TODO: 处理HTTP Error
 
     async def rerank(self, query: str, documents: List[str]) -> List[Dict[str, Any]]:
         """
