@@ -1,19 +1,46 @@
+import asyncio
 import inspect
 from uuid import uuid4
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any, Callable, cast, AsyncIterator, AsyncGenerator, get_args
+from typing import (
+    Any,
+    AsyncGenerator,
+    AsyncIterator,
+    Callable,
+    Dict,
+    List,
+    Optional,
+    Sequence,
+    Type,
+    Union,
+    cast,
+    get_args,
+)
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 from agno.media import Media
 from agno.agent import Agent
 from agno.team.team import Team
 from agno.workflow import Workflow
 from agno.memory.v2.memory import Memory
 from agno.utils.log import log_debug, logger
+from agno.run.messages import RunMessages
 from agno.run.team import TeamRunResponseEvent
 from agno.run.workflow import WorkflowRunResponseEvent
 from agno.run.response import RunResponse, RunResponseEvent
 from agno.memory.workflow import WorkflowMemory, WorkflowRun
+from agno.models.base import Model
+from agno.models.message import Message
+from agno.models.response import ModelResponse
+from agno.utils.log import (
+    log_debug,
+    log_error,
+    log_exception,
+    log_info,
+    log_warning,
+    set_log_level_to_debug,
+    set_log_level_to_info,
+)
 
 from ..web import get_current_workflow
 
@@ -29,6 +56,114 @@ class MindmatrixRunResponse(RunResponse):
 
 @dataclass(init=False)
 class BaseAgent(Agent):
+
+    async def _arun(
+        self,
+        run_response: RunResponse,
+        run_messages: RunMessages,
+        session_id: str,
+        user_id: Optional[str] = None,
+        response_format: Optional[Union[Dict, Type[BaseModel]]] = None,
+        message: Optional[Union[str, List, Dict, Message]] = None,
+        messages: Optional[Sequence[Union[Dict, Message]]] = None,
+    ) -> RunResponse:
+        """Run the Agent and yield the RunResponse.
+
+        Steps:
+        1. Reason about the task if reasoning is enabled
+        2. Generate a response from the Model (includes running function calls)
+        3. Add the run to memory
+        4. Update Agent Memory
+        5. Calculate session metrics
+        6. Save session to storage
+        7. Save output to file if save_response_to_file is set
+        """
+        log_debug(f"Agent Run Start: {run_response.run_id}", center=True)
+
+        self.model = cast(Model, self.model)
+        # 1. Reason about the task if reasoning is enabled
+        await self._ahandle_reasoning(run_messages=run_messages)
+
+        # Get the index of the last "user" message in messages_for_run
+        # We track this so we can add messages after this index to the RunResponse and Memory
+        index_of_last_user_message = len(run_messages.messages)
+
+        # 2. Generate a response from the Model (includes running function calls)
+        model_response: ModelResponse = await self.model.aresponse(
+            messages=run_messages.messages,
+            tools=self._tools_for_model,
+            functions=self._functions_for_model,
+            tool_choice=self.tool_choice,
+            tool_call_limit=self.tool_call_limit,
+            response_format=response_format,
+        )
+
+        # If a parser model is provided, structure the response separately
+        if self.parser_model is not None:
+            if self.response_model is not None:
+                parser_response_format = self._get_response_format(self.parser_model)
+                messages_for_parser_model = self.get_messages_for_parser_model(model_response, parser_response_format)
+                parser_model_response: ModelResponse = await self.parser_model.aresponse(
+                    messages=messages_for_parser_model,
+                    response_format=parser_response_format,
+                )
+                parser_model_response_message: Optional[Message] = None
+                for message in reversed(messages_for_parser_model):
+                    if message.role == "assistant":
+                        parser_model_response_message = message
+                        break
+                if parser_model_response_message is not None:
+                    run_messages.messages.append(parser_model_response_message)
+                    model_response.parsed = parser_model_response.parsed
+                    model_response.content = parser_model_response.content
+                else:
+                    log_warning("Unable to parse response with parser model")
+            else:
+                log_warning("A response model is required to parse the response with a parser model")
+
+        self._update_run_response(model_response=model_response, run_response=run_response, run_messages=run_messages)
+
+        # 3. Add the run to memory
+        self._add_run_to_memory(
+            run_response=run_response,
+            run_messages=run_messages,
+            session_id=session_id,
+            messages=messages,
+            index_of_last_user_message=index_of_last_user_message,
+        )
+
+        # We should break out of the run function
+        if any(tool_call.is_paused for tool_call in run_response.tools or []):
+            return self._handle_agent_run_paused(
+                run_response=run_response, session_id=session_id, user_id=user_id, message=message
+            )
+
+        # 4. Update Agent Memory (后台协程异步执行，不阻塞主流程)
+        asyncio.create_task(self._aupdate_memory_background(
+            run_messages=run_messages,
+            session_id=session_id,
+            user_id=user_id,
+            messages=messages,
+        ))
+
+        # 5. Calculate session metrics
+        self._set_session_metrics(run_messages)
+
+        # 6. Save session to storage
+        self.write_to_storage(user_id=user_id, session_id=session_id)
+
+        # 7. Save output to file if save_response_to_file is set
+        self.save_run_response_to_file(message=message, session_id=session_id)
+
+        # Log Agent Run
+        await self._alog_agent_run(user_id=user_id, session_id=session_id)
+
+        # Convert the response to the structured format if needed
+        self._convert_response_to_structured_format(run_response)
+
+        log_debug(f"Agent Run End: {run_response.run_id}", center=True, symbol="*")
+
+        return run_response
 
     @property
     def custom_session_state(self) -> Dict[str, Any]:
@@ -69,6 +204,26 @@ class BaseAgent(Agent):
 
         import json
         return json.dumps(docs_dict, indent=2, ensure_ascii=False)
+
+    async def _aupdate_memory_background(
+        self,
+        run_messages: RunMessages,
+        session_id: str,
+        user_id: Optional[str] = None,
+        messages: Optional[Sequence[Union[Dict, Message]]] = None,
+    ) -> None:
+        """后台异步更新内存，不阻塞主流程"""
+        try:
+            async for _ in self._aupdate_memory(
+                run_messages=run_messages,
+                session_id=session_id,
+                user_id=user_id,
+                messages=messages,
+            ):
+                pass
+        except Exception as e:
+            logger.error(f"后台内存更新失败: {e}")
+            # 不抛出异常，避免影响主流程
     
 
 class BaseWorkflow(Workflow):
