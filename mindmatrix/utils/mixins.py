@@ -19,10 +19,8 @@ class MilvusAnnotatedResponseMixin:
     @classmethod
     async def annotated_response(
         cls, 
-        instruction: str,
         query: str,
-        retrieve_query: str,
-        reranker_query: str,
+        background_info: str,
         embedder: Embedder,
         milvus: MilvusClient,
         collection_name: str,
@@ -37,11 +35,10 @@ class MilvusAnnotatedResponseMixin:
         filter: str = "",
         limit: int = 5,
     ) -> List[str]:
-        retrieve_query = retrieve_query[-1]["content"] if isinstance(retrieve_query, list) else retrieve_query
-        reranker_query = reranker_query[-1]["content"] if isinstance(reranker_query, list) else reranker_query
+        query = query[-1]["content"] if isinstance(query, list) else query
 
         docs = await cls._retrieve_documents(
-            retrieve_query,
+            f"Instruct: 根据用户的指令，召回能够完成该指令任务的智能体。\nQuery:{query}",
             embedder,
             milvus,
             collection_name,
@@ -53,11 +50,11 @@ class MilvusAnnotatedResponseMixin:
             limit=limit,
         )
 
-        if use_reranker and len(docs) > 0:
+        if use_reranker and len(docs) > 1:
             rerank_docs = [item[content_field] for item in docs]
             rerank_results = await cls._rerank_documents(
-                instruction=instruction,
                 query=query,
+                instruction=f"{background_info}。根据以上背景信息(如年龄、职业、兴趣爱好等)，结合用户查询，召回对应的智能体。",
                 documents=rerank_docs,
                 reranker_client=reranker,
             )
@@ -84,7 +81,7 @@ class MilvusAnnotatedResponseMixin:
         """
         检索文档
         """
-        logger.info(f"embedding query: {query}")
+        logger.info(f"embedding query:\n{query}")
         embeddings = embedder.get_embedding(query)
         logger.debug(f"get query embedding: {embeddings[:10]}, len: {len(embeddings)}")
 
@@ -122,8 +119,8 @@ class MilvusAnnotatedResponseMixin:
     @classmethod
     async def _rerank_documents(
         cls,
-        instruction: str,
         query: str,
+        instruction: str,
         reranker_client: AsyncRerankerClient,
         documents: List[str],
     ) -> List[dict]:
