@@ -1,14 +1,16 @@
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from textwrap import dedent
+from agno.agent import Agent
 from agno.models.message import Message
+from agno.memory.v2.db import MemoryDb
 from agno.memory.v2.manager import MemoryManager
 
 
 @dataclass
 class MindmatrixMemoryManager(MemoryManager):
-    
+
     def get_system_message(
         self,
         existing_memories: Optional[List[Dict[str, Any]]] = None,
@@ -83,3 +85,83 @@ class MindmatrixMemoryManager(MemoryManager):
             system_prompt_lines.append(self.additional_instructions)
 
         return Message(role="system", content="\n".join(system_prompt_lines))
+    
+    def build_agent(
+        self,
+        messages: Optional[List[Message]] = None,
+        user_id: str = None,
+        db: MemoryDb = None,
+        existing_memories: Optional[List[Dict[str, Any]]] = None,
+        delete_memories: bool = True,
+        clear_memories: bool = True,
+    ) -> Agent:
+        if messages is None:
+            input_string = ""
+        elif len(messages) == 1:
+            input_string = messages[0].get_content_string()
+        else:
+            input_string = f"{', '.join([m.get_content_string() for m in messages if m.role == 'user' and m.content])}"
+        
+        return Agent(
+            model=self.model,
+            system_message=self.get_system_message(existing_memories, delete_memories, clear_memories),
+            tools=self._get_fake_db_tools(),
+            debug_mode=True,
+        )
+    
+    def _get_fake_db_tools(
+        self,
+        enable_add_memory: bool = True,
+        enable_update_memory: bool = True,
+        enable_delete_memory: bool = True,
+        enable_clear_memory: bool = True,
+    ) -> List[Callable]:
+
+        def add_memory(memory: str, topics: Optional[List[str]] = None) -> str:
+            """Use this function to add a memory to the database.
+            Args:
+                memory (str): The memory to be added.
+                topics (Optional[List[str]]): The topics of the memory (e.g. ["name", "hobbies", "location"]).
+            Returns:
+                str: A message indicating if the memory was added successfully or not.
+            """
+            return "Memory added successfully"
+
+        def update_memory(memory_id: str, memory: str, topics: Optional[List[str]] = None) -> str:
+            """Use this function to update an existing memory in the database.
+            Args:
+                memory_id (str): The id of the memory to be updated.
+                memory (str): The updated memory.
+                topics (Optional[List[str]]): The topics of the memory (e.g. ["name", "hobbies", "location"]).
+            Returns:
+                str: A message indicating if the memory was updated successfully or not.
+            """
+            return "Memory updated successfully"
+
+        def delete_memory(memory_id: str) -> str:
+            """Use this function to delete a single memory from the database.
+            Args:
+                memory_id (str): The id of the memory to be deleted.
+            Returns:
+                str: A message indicating if the memory was deleted successfully or not.
+            """
+            return "Memory deleted successfully"
+
+        def clear_memory() -> str:
+            """Use this function to remove all (or clear all) memories from the database.
+
+            Returns:
+                str: A message indicating if the memory was cleared successfully or not.
+            """
+            return "Memory cleared successfully"
+
+        functions: List[Callable] = []
+        if enable_add_memory:
+            functions.append(add_memory)
+        if enable_update_memory:
+            functions.append(update_memory)
+        if enable_delete_memory:
+            functions.append(delete_memory)
+        if enable_clear_memory:
+            functions.append(clear_memory)
+        return functions
