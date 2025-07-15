@@ -95,17 +95,18 @@ class MindmatrixMemoryManager(MemoryManager):
         delete_memories: bool = True,
         clear_memories: bool = True,
     ) -> Agent:
-        if messages is None:
-            input_string = ""
-        elif len(messages) == 1:
-            input_string = messages[0].get_content_string()
-        else:
-            input_string = f"{', '.join([m.get_content_string() for m in messages if m.role == 'user' and m.content])}"
+        # if messages is None:
+        #     input_string = ""
+        # elif len(messages) == 1:
+        #     input_string = messages[0].get_content_string()
+        # else:
+        #     input_string = f"{', '.join([m.get_content_string() for m in messages if m.role == 'user' and m.content])}"
         
         return Agent(
             model=self.model,
             system_message=self.get_system_message(existing_memories, delete_memories, clear_memories),
             tools=self._get_fake_db_tools(),
+            tool_call_limit=1,
             debug_mode=True,
         )
     
