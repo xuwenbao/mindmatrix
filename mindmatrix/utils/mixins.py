@@ -54,7 +54,9 @@ class MilvusAnnotatedResponseMixin:
             rerank_docs = [item[content_field] for item in docs]
             rerank_results = await cls._rerank_documents(
                 query=query,
-                instruction=f"{background_info}。根据以上背景信息(如年龄、职业、兴趣爱好等)，结合用户查询，召回对应的智能体。",
+                instruction=f"{background_info}。根据以上背景信息(如年龄、职业、兴趣爱好等)，结合用户查询，召回对应的智能体。" \
+                    if background_info else \
+                    f"根据用户的指令，召回能够完成该指令任务的智能体。",
                 documents=rerank_docs,
                 reranker_client=reranker,
             )
