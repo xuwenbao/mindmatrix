@@ -64,8 +64,6 @@ class BaseAgent(Agent):
         session_id: str,
         user_id: Optional[str] = None,
         response_format: Optional[Union[Dict, Type[BaseModel]]] = None,
-        message: Optional[Union[str, List, Dict, Message]] = None,
-        messages: Optional[Sequence[Union[Dict, Message]]] = None,
     ) -> RunResponse:
         """Run the Agent and yield the RunResponse.
 
@@ -128,14 +126,13 @@ class BaseAgent(Agent):
             run_response=run_response,
             run_messages=run_messages,
             session_id=session_id,
-            messages=messages,
             index_of_last_user_message=index_of_last_user_message,
         )
 
         # We should break out of the run function
         if any(tool_call.is_paused for tool_call in run_response.tools or []):
             return self._handle_agent_run_paused(
-                run_response=run_response, session_id=session_id, user_id=user_id, message=message
+                run_response=run_response, run_messages=run_messages, session_id=session_id, user_id=user_id
             )
 
         # 4. Update Agent Memory (后台协程异步执行，不阻塞主流程)
@@ -143,7 +140,6 @@ class BaseAgent(Agent):
             run_messages=run_messages,
             session_id=session_id,
             user_id=user_id,
-            messages=messages,
         ))
 
         # 5. Calculate session metrics
@@ -153,7 +149,7 @@ class BaseAgent(Agent):
         self.write_to_storage(user_id=user_id, session_id=session_id)
 
         # 7. Save output to file if save_response_to_file is set
-        self.save_run_response_to_file(message=message, session_id=session_id)
+        self.save_run_response_to_file(message=run_messages.user_message, session_id=session_id)
 
         # Log Agent Run
         await self._alog_agent_run(user_id=user_id, session_id=session_id)
@@ -210,7 +206,6 @@ class BaseAgent(Agent):
         run_messages: RunMessages,
         session_id: str,
         user_id: Optional[str] = None,
-        messages: Optional[Sequence[Union[Dict, Message]]] = None,
     ) -> None:
         """后台异步更新内存，不阻塞主流程"""
         try:
@@ -218,7 +213,6 @@ class BaseAgent(Agent):
                 run_messages=run_messages,
                 session_id=session_id,
                 user_id=user_id,
-                messages=messages,
             ):
                 pass
         except Exception as e:

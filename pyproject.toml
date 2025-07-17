@@ -8,7 +8,7 @@ authors = ["Wenbao <xu-wenbao@foxmail.com>"]
 python = "<3.14,>=3.12"
 fastapi = "^0.115.5"
 loguru = "^0.7.2"
-agno = "^1.6.0"
+agno = "1.6.4"
 openai = "^1.65.4"
 sse-starlette = "^2.2.1"
 httpx = {extras = ["socks"], version = "^0.28.1"}
