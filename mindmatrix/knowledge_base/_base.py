@@ -111,11 +111,17 @@ class Milvus(VectorDb):
         self, 
         collection: str, 
         documents: List[Document], 
-        filters: Optional[Dict[str, Any]] = None
+        filters: Optional[Dict[str, Any]] = None,
+        batch_size: int = 1000
     ) -> None:
-        logger.debug(f"async upsert {len(documents)} to collection[{collection}]")
+        logger.debug(f"async upsert {len(documents)} to collection[{collection}] with batch_size={batch_size}")
         client = await self._async_get_client(collection)
-        await client.async_upsert(documents, filters)
+        
+        # 批量处理 documents
+        for i in range(0, len(documents), batch_size):
+            batch = documents[i:i + batch_size]
+            logger.debug(f"processing batch {i//batch_size + 1}/{(len(documents) + batch_size - 1)//batch_size} with {len(batch)} documents")
+            await client.async_upsert(batch, filters)
 
     async def async_search(
         self,
