@@ -112,7 +112,7 @@ class Milvus(VectorDb):
         collection: str, 
         documents: List[Document], 
         filters: Optional[Dict[str, Any]] = None,
-        batch_size: int = 1000
+        batch_size: int = 100
     ) -> None:
         logger.debug(f"async upsert {len(documents)} to collection[{collection}] with batch_size={batch_size}")
         client = await self._async_get_client(collection)
