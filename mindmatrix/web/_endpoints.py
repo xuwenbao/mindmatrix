@@ -7,9 +7,9 @@ from fastapi import APIRouter, Request
 from agno.memory.v2.schema import UserMemory
 from sse_starlette.sse import EventSourceResponse
 
-
 from ._sse_adapter import SSEAdapter, ChatCompletionRequest as SSEChatCompletionRequest
 from ._openai_adapter import OpenAIAdapter, ChatCompletionRequest as OpenAIChatCompletionRequest
+
 
 router = APIRouter(prefix='/mm/v1')
 
@@ -33,66 +33,6 @@ async def workflow_chat_completions(
 ):
     workflow = router.agent_provider(input.model, type_="workflow")
     return await OpenAIAdapter.handle_workflow_chat_request(workflow, input)
-
-
-@router.get("/memory/{user_id}/memories")
-async def get_memories(
-    user_id: str,
-):
-    memory = router.memory_provider()
-    assert memory is not None, "Memory is not set"
-    return memory.get_user_memories(user_id)
-
-
-@router.post("/memory/{user_id}/memories")
-async def add_memory(
-    user_id: str,
-    input: MemoryCreateRequest,
-):
-    memory = router.memory_provider()
-    assert memory is not None, "Memory is not set"
-    return memory.add_user_memory(
-        user_id=user_id, 
-        memory=UserMemory(
-            memory=input.memory,
-            topics=input.topics,
-        ),
-    )
-
-
-@router.delete("/memory/{user_id}/memories/{memory_id}")
-async def delete_memory(
-    user_id: str,
-    memory_id: str,
-):
-    """
-    删除指定用户的指定记忆
-    
-    ## 功能描述
-    此接口用于删除指定用户的特定记忆记录。
-    
-    ## 请求参数
-    
-    ### Path Parameters
-    - user_id: 用户ID
-    - memory_id: 记忆ID
-    
-    ## 响应说明
-    ### 成功响应 (200 OK)
-    返回删除操作的结果
-    
-    ### 错误响应
-    - 404 Not Found: 记忆不存在
-    - 500 Internal Server Error: 服务器内部错误
-    
-    ## 调用示例
-    ```bash
-    DELETE /mm/v1/memory/jane_doe@example.com/memories/memory_123
-    ```
-    """
-    memory = router.memory_provider()
-    assert memory is not None, "Memory is not set"
-    return memory.delete_user_memory(user_id=user_id, memory_id=memory_id)
 
 
 @router.post("/sse/{type}/chat/completions")
@@ -206,3 +146,63 @@ async def sse_chat_completions(
     sse_event_generator = SSEAdapter.handle_chat_request(request, handler, input, type=type)
     
     return EventSourceResponse(sse_event_generator)
+
+
+@router.get("/memory/{user_id}/memories")
+async def get_memories(
+    user_id: str,
+):
+    memory = router.memory_provider()
+    assert memory is not None, "Memory is not set"
+    return memory.get_user_memories(user_id)
+
+
+@router.post("/memory/{user_id}/memories")
+async def add_memory(
+    user_id: str,
+    input: MemoryCreateRequest,
+):
+    memory = router.memory_provider()
+    assert memory is not None, "Memory is not set"
+    return memory.add_user_memory(
+        user_id=user_id, 
+        memory=UserMemory(
+            memory=input.memory,
+            topics=input.topics,
+        ),
+    )
+
+
+@router.delete("/memory/{user_id}/memories/{memory_id}")
+async def delete_memory(
+    user_id: str,
+    memory_id: str,
+):
+    """
+    删除指定用户的指定记忆
+    
+    ## 功能描述
+    此接口用于删除指定用户的特定记忆记录。
+    
+    ## 请求参数
+    
+    ### Path Parameters
+    - user_id: 用户ID
+    - memory_id: 记忆ID
+    
+    ## 响应说明
+    ### 成功响应 (200 OK)
+    返回删除操作的结果
+    
+    ### 错误响应
+    - 404 Not Found: 记忆不存在
+    - 500 Internal Server Error: 服务器内部错误
+    
+    ## 调用示例
+    ```bash
+    DELETE /mm/v1/memory/jane_doe@example.com/memories/memory_123
+    ```
+    """
+    memory = router.memory_provider()
+    assert memory is not None, "Memory is not set"
+    return memory.delete_user_memory(user_id=user_id, memory_id=memory_id)
