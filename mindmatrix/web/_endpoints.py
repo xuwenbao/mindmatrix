@@ -1,14 +1,22 @@
 import uuid
-from fastapi import APIRouter, Request
-from sse_starlette.sse import EventSourceResponse
-from typing import Literal
+from typing import Literal, Optional
 
 from loguru import logger
+from pydantic import BaseModel, Field
+from fastapi import APIRouter, Request
+from agno.memory.v2.schema import UserMemory
+from sse_starlette.sse import EventSourceResponse
+
 
 from ._sse_adapter import SSEAdapter, ChatCompletionRequest as SSEChatCompletionRequest
 from ._openai_adapter import OpenAIAdapter, ChatCompletionRequest as OpenAIChatCompletionRequest
 
 router = APIRouter(prefix='/mm/v1')
+
+
+class MemoryCreateRequest(BaseModel):
+    memory: str = Field(description="记忆内容")
+    topics: Optional[list[str]] = Field(default=[], description="记忆主题")
 
 
 @router.post("/agent/chat/completions")
@@ -32,7 +40,24 @@ async def get_memories(
     user_id: str,
 ):
     memory = router.memory_provider()
+    assert memory is not None, "Memory is not set"
     return memory.get_user_memories(user_id)
+
+
+@router.post("/memory/{user_id}/memories")
+async def add_memory(
+    user_id: str,
+    input: MemoryCreateRequest,
+):
+    memory = router.memory_provider()
+    assert memory is not None, "Memory is not set"
+    return memory.add_user_memory(
+        user_id=user_id, 
+        memory=UserMemory(
+            memory=input.memory,
+            topics=input.topics,
+        ),
+    )
 
 
 @router.post("/sse/{type}/chat/completions")

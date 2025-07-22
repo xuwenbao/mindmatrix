@@ -99,6 +99,37 @@ class AsyncMindMatrixClient(AsyncHttpClient):
         
         return response.get("data", [])
 
+    async def add_memory(
+        self, 
+        user_id: str, 
+        memory: str, 
+        topics: List[str] = None
+    ) -> Dict[str, Any]:
+        """
+        添加用户记忆
+        
+        Args:
+            user_id: 用户ID
+            memory: 记忆内容
+            topics: 标签列表，可选
+            
+        Returns:
+            添加结果
+        """
+        path = f"/mm/v1/memory/{user_id}/memories"
+        payload = {
+            "memory": memory,
+            "topics": topics or []
+        }
+        
+        response = await self._post(path, json=payload, headers=self.headers)
+        logger.debug(f"add memory response: {response}")
+        
+        if response.get("status") != 200:
+            raise MindMatrixError(f"Failed to add memory: ({response.get('status')}) {response.get('error')}")
+        
+        return response.get("data", {})
+
 
 class MindMatrixClient(SyncHttpClient):
     def __init__(
@@ -187,6 +218,37 @@ class MindMatrixClient(SyncHttpClient):
         
         return response.get("data", [])
 
+    def add_memory(
+        self, 
+        user_id: str, 
+        memory: str, 
+        topics: List[str] = None
+    ) -> Dict[str, Any]:
+        """
+        添加用户记忆（同步版本）
+        
+        Args:
+            user_id: 用户ID
+            memory: 记忆内容
+            topics: 标签列表，可选
+            
+        Returns:
+            添加结果
+        """
+        path = f"/mm/v1/memory/{user_id}/memories"
+        payload = {
+            "memory": memory,
+            "topics": topics or []
+        }
+        
+        response = self._post(path, json=payload, headers=self.headers)
+        logger.debug(f"add memory response: {response}")
+        
+        if response.get("status") != 200:
+            raise MindMatrixError(f"Failed to add memory: ({response.get('status')}) {response.get('error')}")
+        
+        return response.get("data", {})
+
 
 if __name__ == "__main__":
     from pprint import pprint
@@ -205,6 +267,14 @@ if __name__ == "__main__":
             # 获取记忆
             memories = await client.get_memories("user123")
             pprint(memories)
+            
+            # 添加记忆
+            result = await client.add_memory(
+                user_id="user123",
+                memory="用户喜欢喝咖啡",
+                topics=["偏好", "饮品"]
+            )
+            pprint(result)
 
     import asyncio
     asyncio.run(main())
@@ -221,4 +291,12 @@ if __name__ == "__main__":
         
         # 获取记忆
         memories = client.get_memories("user123")
-        pprint(memories) 
+        pprint(memories)
+        
+        # 添加记忆
+        result = client.add_memory(
+            user_id="user123",
+            memory="用户喜欢喝咖啡",
+            topics=["偏好", "饮品"]
+        )
+        pprint(result) 
