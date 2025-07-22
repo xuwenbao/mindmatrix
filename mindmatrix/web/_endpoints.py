@@ -60,6 +60,41 @@ async def add_memory(
     )
 
 
+@router.delete("/memory/{user_id}/memories/{memory_id}")
+async def delete_memory(
+    user_id: str,
+    memory_id: str,
+):
+    """
+    删除指定用户的指定记忆
+    
+    ## 功能描述
+    此接口用于删除指定用户的特定记忆记录。
+    
+    ## 请求参数
+    
+    ### Path Parameters
+    - user_id: 用户ID
+    - memory_id: 记忆ID
+    
+    ## 响应说明
+    ### 成功响应 (200 OK)
+    返回删除操作的结果
+    
+    ### 错误响应
+    - 404 Not Found: 记忆不存在
+    - 500 Internal Server Error: 服务器内部错误
+    
+    ## 调用示例
+    ```bash
+    DELETE /mm/v1/memory/jane_doe@example.com/memories/memory_123
+    ```
+    """
+    memory = router.memory_provider()
+    assert memory is not None, "Memory is not set"
+    return memory.delete_user_memory(user_id=user_id, memory_id=memory_id)
+
+
 @router.post("/sse/{type}/chat/completions")
 async def sse_chat_completions(
     request: Request,

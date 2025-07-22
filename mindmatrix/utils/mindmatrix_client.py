@@ -130,6 +130,31 @@ class AsyncMindMatrixClient(AsyncHttpClient):
         
         return response.get("data", {})
 
+    async def delete_memory(
+        self, 
+        user_id: str, 
+        memory_id: str
+    ) -> Dict[str, Any]:
+        """
+        删除用户记忆
+        
+        Args:
+            user_id: 用户ID
+            memory_id: 记忆ID
+            
+        Returns:
+            删除结果
+        """
+        path = f"/mm/v1/memory/{user_id}/memories/{memory_id}"
+        
+        response = await self._delete(path, headers=self.headers)
+        logger.debug(f"delete memory response: {response}")
+        
+        if response.get("status") != 200:
+            raise MindMatrixError(f"Failed to delete memory: ({response.get('status')}) {response.get('error')}")
+        
+        return response.get("data", {})
+
 
 class MindMatrixClient(SyncHttpClient):
     def __init__(
@@ -249,6 +274,31 @@ class MindMatrixClient(SyncHttpClient):
         
         return response.get("data", {})
 
+    def delete_memory(
+        self, 
+        user_id: str, 
+        memory_id: str
+    ) -> Dict[str, Any]:
+        """
+        删除用户记忆（同步版本）
+        
+        Args:
+            user_id: 用户ID
+            memory_id: 记忆ID
+            
+        Returns:
+            删除结果
+        """
+        path = f"/mm/v1/memory/{user_id}/memories/{memory_id}"
+        
+        response = self._delete(path, headers=self.headers)
+        logger.debug(f"delete memory response: {response}")
+        
+        if response.get("status") != 200:
+            raise MindMatrixError(f"Failed to delete memory: ({response.get('status')}) {response.get('error')}")
+        
+        return response.get("data", {})
+
 
 if __name__ == "__main__":
     from pprint import pprint
@@ -275,6 +325,13 @@ if __name__ == "__main__":
                 topics=["偏好", "饮品"]
             )
             pprint(result)
+            
+            # 删除记忆
+            delete_result = await client.delete_memory(
+                user_id="user123",
+                memory_id="memory_123"
+            )
+            pprint(delete_result)
 
     import asyncio
     asyncio.run(main())
@@ -299,4 +356,11 @@ if __name__ == "__main__":
             memory="用户喜欢喝咖啡",
             topics=["偏好", "饮品"]
         )
-        pprint(result) 
+        pprint(result)
+        
+        # 删除记忆
+        delete_result = client.delete_memory(
+            user_id="user123",
+            memory_id="memory_123"
+        )
+        pprint(delete_result) 
