@@ -27,6 +27,14 @@ async def workflow_chat_completions(
     return await OpenAIAdapter.handle_workflow_chat_request(workflow, input)
 
 
+@router.get("/memory/{user_id}/memories")
+async def get_memories(
+    user_id: str,
+):
+    memory = router.memory_provider()
+    return memory.get_user_memories(user_id)
+
+
 @router.post("/sse/{type}/chat/completions")
 async def sse_chat_completions(
     request: Request,

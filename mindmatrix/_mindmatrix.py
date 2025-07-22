@@ -9,10 +9,13 @@ from fastapi import FastAPI
 from prefect.tasks import Task
 from agno.agent import Agent
 from agno.workflow import Workflow
+from agno.memory.v2 import Memory
+from agno.models.base import Model
+from agno.vectordb.base import VectorDb
 
-from .web import create_app, AgentProvider
 from .builtins_.tasks import embed_documents
 from .knowledge_base import VectorDb, VectorDbProvider
+from .web import create_app, AgentProvider, MemoryProvider
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -73,6 +76,9 @@ class MindMatrix:
     def __init__(
         self,
         *,
+        llm: Union[Model, None] = None,
+        memory: Union[Memory, None] = None,
+        vectordb: Union[VectorDb, None] = None,
         enable_builtins: Union[None, bool] = None,
         enable_plugins: Union[None, bool] = None,
         **kwargs,
@@ -81,6 +87,10 @@ class MindMatrix:
         self._plugins_enabled = False
 
         self._app: FastAPI = None
+
+        self._llm = llm
+        self._memory = memory
+        self._vectordb = vectordb
 
         # Register the converters
         self._agent_factories: List[AgentRegistration] = []
@@ -100,9 +110,18 @@ class MindMatrix:
     def app(self) -> FastAPI:
         if self._app is None:
             self._app = create_app(
-                agent_provider=AgentProvider(self)
+                agent_provider=AgentProvider(self),
+                memory_provider=MemoryProvider(self),
             )
         return self._app
+    
+    @property
+    def llm(self) -> Model:
+        return self._llm
+
+    @property
+    def memory(self) -> Memory:
+        return self._memory
 
     def enable_builtins(self, **kwargs) -> None:
         self.register_task(task_name="embed_documents", task=embed_documents)

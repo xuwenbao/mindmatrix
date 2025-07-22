@@ -24,9 +24,20 @@ class AgentProvider:
             return self.mindmatrix.get_workflow(agent_name, **kwargs)
         else:
             raise ValueError(f"Invalid type: {type_}, must be 'agent' or 'workflow'")
+        
+
+class MemoryProvider:
+    def __init__(self, mindmatrix):
+        self.mindmatrix = mindmatrix
+
+    def __call__(
+        self,
+        **kwargs,
+    ):
+        return self.mindmatrix.memory
 
 
-def create_app(agent_provider: AgentProvider):
+def create_app(agent_provider: AgentProvider, memory_provider: MemoryProvider):
     """Create the FastAPI app and include the router."""
     app = FastAPI(
         title="mindmatrix",
@@ -57,7 +68,9 @@ def create_app(agent_provider: AgentProvider):
         return JSONResponse(content={"status": "OK"})
     
     logger.debug(f"setting router agent_provider: {agent_provider}")
+    logger.debug(f"setting router memory_provider: {memory_provider}")
     api_router.agent_provider = agent_provider
+    api_router.memory_provider = memory_provider
     app.include_router(router=api_router)
 
     return app
