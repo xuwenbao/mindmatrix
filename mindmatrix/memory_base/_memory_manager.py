@@ -20,11 +20,19 @@ class MindmatrixMemoryManager(MemoryManager):
         if self.system_message is not None:
             return Message(role="system", content=self.system_message)
 
+        # memory_capture_instructions = self.memory_capture_instructions or dedent("""\
+        #     记忆应该包含能够个性化用户持续交互的详细信息，例如：
+        #       - 个人信息：姓名、年龄、职业、位置、兴趣、偏好等
+        #       - 用户分享的重要生活事件或经历
+        #       - 关于用户当前情况、挑战或目标的重要背景信息
+        #       - 用户喜欢或不喜欢的事物，他们的观点、信念、价值观等
+        #       - 任何其他能够提供用户个性、观点或需求有价值洞察的详细信息\
+        # """)
+
         memory_capture_instructions = self.memory_capture_instructions or dedent("""\
             记忆应该包含能够个性化用户持续交互的详细信息，例如：
               - 个人信息：姓名、年龄、职业、位置、兴趣、偏好等
               - 用户分享的重要生活事件或经历
-              - 关于用户当前情况、挑战或目标的重要背景信息
               - 用户喜欢或不喜欢的事物，他们的观点、信念、价值观等
               - 任何其他能够提供用户个性、观点或需求有价值洞察的详细信息\
         """)

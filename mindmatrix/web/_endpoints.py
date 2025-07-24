@@ -378,7 +378,7 @@ async def get_memories(
     """
     memory = router.memory_provider()
     assert memory is not None, "Memory is not set"
-    return memory.get_user_memories(user_id)
+    return memory.get_user_memories(user_id=user_id)
 
 
 @router.post("/memory/{user_id}/memories")
