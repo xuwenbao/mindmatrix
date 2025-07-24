@@ -1,0 +1,72 @@
+---
+alwaysApply: true
+---
+# MindMatrix 项目结构指南
+
+MindMatrix是一个基于Agno的轻量级智能体“应用”，包括如下功能：
+* 智能体插件，智能体即插即用。以插件形式注册智能体（Agent）、工作流（Workflow）。
+* 智能体接口，插件注册后即可访问。通过FastAPI实现，预置SSE、Openai兼容等形式的智能体接口。
+* RAG功能增强，内置RAG功能增强代码，更好中文场景、中文模型支持。
+* 长期记忆功能增强，内置长期记忆功能增强代码，更好中文场景长期记忆提取。
+
+## 主要入口点
+- [pyproject.toml](mdc:pyproject.toml) - Poetry项目配置和依赖管理
+- [mindmatrix/__init__.py](mdc:mindmatrix/__init__.py) - 主模块入口，导出所有公共API
+
+## 核心模块结构
+
+### 核心类
+- [mindmatrix/_mindmatrix.py](mdc:mindmatrix/_mindmatrix.py) - MindMatrix核心类，提供代理注册、工作流管理和插件系统
+  - 支持代理工厂模式注册
+  - 工作流编排和任务管理
+  - 插件系统支持
+  - 向量数据库集成
+
+### Web API
+- [mindmatrix/web/_app.py](mdc:mindmatrix/web/_app.py) - FastAPI应用配置和中间件
+- [mindmatrix/web/_endpoints.py](mdc:mindmatrix/web/_endpoints.py) - RESTful API端点定义
+  - `/mm/v1/agent/chat/completions` - 智能体聊天接口
+  - `/mm/v1/workflow/chat/completions` - 工作流聊天接口
+  - `/mm/v1/sse/{type}/chat/completions` - 流式响应接口
+  - `/mm/v1/memory/{user_id}/memories` - 记忆管理接口
+- [mindmatrix/web/_openai_adapter.py](mdc:mindmatrix/web/_openai_adapter.py) - OpenAI兼容适配器
+- [mindmatrix/web/_sse_adapter.py](mdc:mindmatrix/web/_sse_adapter.py) - Server-Sent Events适配器
+
+### 智能体基类
+- [mindmatrix/agent_base/_base.py](mdc:mindmatrix/agent_base/_base.py) - 智能体基类和工作流基类
+  - `BaseAgent` - 智能体基类，支持推理、工具调用、记忆管理
+  - `BaseWorkflow` - 工作流基类，支持复杂任务编排
+  - `MindmatrixRunResponse` - 运行响应模型
+- [mindmatrix/agent_base/_models.py](mdc:mindmatrix/agent_base/_models.py) - 模型类
+
+### RAG类
+- [mindmatrix/knowledge_base/_base.py](mdc:mindmatrix/knowledge_base/_base.py) - 知识库核心组件
+  - `Document` - 文档模型
+  - `OpenAIEmbedder` - OpenAI嵌入模型
+  - `Milvus` - Milvus向量数据库集成
+  - `VectorDbProvider` - 向量数据库提供者
+
+### Memory类
+- [mindmatrix/memory_base/_memory.py](mdc:mindmatrix/memory_base/_memory.py) - 记忆核心类
+- [mindmatrix/memory_base/_memory_manager.py](mdc:mindmatrix/memory_base/_memory_manager.py) - 记忆管理器
+- [mindmatrix/memory_base/_mem0.py](mdc:mindmatrix/memory_base/_mem0.py) - 记忆存储实现
+
+### 工具类
+- [mindmatrix/utils/mindmatrix_client.py](mdc:mindmatrix/utils/mindmatrix_client.py) - MindMatrix客户端
+  - `AsyncMindMatrixClient` - 异步客户端
+  - `MindMatrixClient` - 同步客户端
+- [mindmatrix/utils/http_client.py](mdc:mindmatrix/utils/http_client.py) - HTTP客户端基类
+- [mindmatrix/utils/reranker_client.py](mdc:mindmatrix/utils/reranker_client.py) - 重排序客户端
+- [mindmatrix/utils/mixins.py](mdc:mindmatrix/utils/mixins.py) - 混入类
+
+### 内置功能和数据集
+- [mindmatrix/builtins_/tasks/embeddings.py](mdc:mindmatrix/builtins_/tasks/embeddings.py) - 文档嵌入任务
+- [mindmatrix/datasets_/sharegpt.py](mdc:mindmatrix/datasets_/sharegpt.py) - ShareGPT数据集处理
+
+## 开发规范
+- 使用Python 3.12+语法和类型注解
+- 使用Poetry进行依赖管理
+- 基于Agno进行智能体开发
+- 遵循FastAPI最佳实践和异步编程
+- 使用loguru进行结构化日志记录
+- 支持插件化架构和依赖注入
