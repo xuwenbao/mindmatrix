@@ -3,13 +3,13 @@
 ## 应用架构设计
 
 ### 核心组件
-- [mindmatrix/web/_app.py](mdc:mindmatrix/web/_app.py) - FastAPI应用配置和中间件
+- [src/mindmatrix/web/_app.py](mdc:src/mindmatrix/web/_app.py) - FastAPI应用配置和中间件
   - CORS中间件配置
   - 全局异常处理器
   - 健康检查端点
   - 依赖注入设置
-- [mindmatrix/web/_endpoints.py](mdc:mindmatrix/web/_endpoints.py) - RESTful API端点定义
-- [mindmatrix/web/_security.py](mdc:mindmatrix/web/_security.py) - 安全配置和认证
+- [src/mindmatrix/web/_endpoints.py](mdc:src/mindmatrix/web/_endpoints.py) - RESTful API端点定义
+- [src/mindmatrix/web/_security.py](mdc:src/mindmatrix/web/_security.py) - 安全配置和认证
 
 ### API端点设计
 - **智能体聊天**: `/mm/v1/agent/chat/completions` - 智能体对话接口

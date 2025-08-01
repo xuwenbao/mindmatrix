@@ -39,4 +39,4 @@ alwaysApply: false
 ## 依赖管理
 - 使用Poetry管理依赖
 - 在[pyproject.toml](mdc:pyproject.toml)中定义依赖
-- 定期更新依赖版本# Python 编码标准
+- 定期更新依赖版本

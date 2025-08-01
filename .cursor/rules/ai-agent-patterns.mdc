@@ -3,14 +3,14 @@
 ## 核心架构设计
 
 ### 基础代理框架
-- [mindmatrix/agent_base/_base.py](mdc:mindmatrix/agent_base/_base.py) - 基础代理和工作流类
+- [src/mindmatrix/agent_base/_base.py](mdc:src/mindmatrix/agent_base/_base.py) - 基础代理和工作流类
   - `BaseAgent` - 智能体基类，支持推理、工具调用、记忆管理
   - `BaseWorkflow` - 工作流基类，支持复杂任务编排
   - `MindmatrixRunResponse` - 运行响应模型，包含响应工件
-- [mindmatrix/agent_base/_models.py](mdc:mindmatrix/agent_base/_models.py) - 数据模型定义
+- [src/mindmatrix/agent_base/_models.py](mdc:src/mindmatrix/agent_base/_models.py) - 数据模型定义
 
 ### 核心编排引擎
-- [mindmatrix/_mindmatrix.py](mdc:mindmatrix/_mindmatrix.py) - MindMatrix核心类
+- [src/mindmatrix/_mindmatrix.py](mdc:src/mindmatrix/_mindmatrix.py) - MindMatrix核心类
   - 代理工厂模式注册和管理
   - 工作流编排和任务调度
   - 插件系统支持
@@ -53,11 +53,11 @@
 ## 记忆管理系统
 
 ### 记忆架构
-- [mindmatrix/memory_base/_memory.py](mdc:mindmatrix/memory_base/_memory.py) - 记忆核心类
+- [src/mindmatrix/memory_base/_memory.py](mdc:src/mindmatrix/memory_base/_memory.py) - 记忆核心类
   - 用户记忆管理
   - 会话记忆存储
   - 主题过滤机制
-- [mindmatrix/memory_base/_memory_manager.py](mdc:mindmatrix/memory_base/_memory_manager.py) - 记忆管理器
+- [src/mindmatrix/memory_base/_memory_manager.py](mdc:src/mindmatrix/memory_base/_memory_manager.py) - 记忆管理器
 
 ### 记忆特性
 - **个性化记忆**: 基于用户ID的记忆隔离
@@ -74,7 +74,7 @@
 - **实时更新**: 知识库动态更新机制
 
 ### 知识库组件
-- [mindmatrix/knowledge_base/_base.py](mdc:mindmatrix/knowledge_base/_base.py) - 知识库核心
+- [src/mindmatrix/knowledge_base/_base.py](mdc:src/mindmatrix/knowledge_base/_base.py) - 知识库核心
   - `Document` - 文档模型
   - `Milvus` - Milvus向量数据库集成
   - `OpenAIEmbedder` - OpenAI嵌入模型

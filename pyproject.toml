@@ -1,19 +1,18 @@
-[tool.poetry]
+[project]
 name = "mindmatrix"
 version = "0.1.0"
 description = ""
-authors = ["Wenbao <xu-wenbao@foxmail.com>"]
-
-[tool.poetry.dependencies]
-python = "<3.14,>=3.12"
-fastapi = "^0.115.5"
-loguru = "^0.7.2"
-agno = "1.6.4"
-openai = "^1.65.4"
-sse-starlette = "^2.2.1"
-httpx = {extras = ["socks"], version = "^0.28.1"}
-prefect = "^3.4.4"
+readme = "README.md"
+requires-python = "<3.14,>=3.12"
+dependencies = [
+    "agno>=1.7.7",
+    "fastapi>=0.116.1",
+    "httpx[socks]>=0.28.1",
+    "loguru>=0.7.3",
+    "openai>=1.98.0",
+    "sse-starlette>=3.0.2",
+]
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["uv_build>=0.8.4,<0.9.0"]
+build-backend = "uv_build"

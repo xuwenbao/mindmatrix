@@ -14,7 +14,7 @@
 
 ## 测试和调试
 - 运行测试：`poetry run pytest`
-- 启动开发服务器：`poetry run uvicorn mindmatrix.web._app:app --reload`
+- 启动开发服务器：`poetry run uvicorn src.mindmatrix.web._app:app --reload`
 - 使用loguru进行调试日志
 - 检查代码质量：`poetry run black .`
 
