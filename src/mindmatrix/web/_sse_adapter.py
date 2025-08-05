@@ -1,11 +1,13 @@
 import json
-from typing import List, Optional, Dict, Any, AsyncGenerator, Union, Literal
+from typing import List, Optional, Dict, Any, AsyncGenerator, Union, Literal, AsyncIterator
 
 from loguru import logger
-from agno.agent import Agent
-from agno.workflow import Workflow
 from pydantic import BaseModel, Field
 from fastapi import HTTPException, Request
+from agno.agent import Agent
+from agno.workflow.v2.workflow import Workflow
+from agno.run.response import RunResponseContentEvent
+from agno.run.v2.workflow import WorkflowRunResponseEvent, WorkflowRunEvent
 
 
 class Message(BaseModel):
@@ -65,22 +67,33 @@ class SSEAdapter:
         # 根据type选择对应的处理方法
         if type == "agent":
             async_gen = await handler.arun(user_message, stream=input.stream)
-        else:
-            async_gen = await handler.arun_workflow(query=user_message, stream=input.stream)
 
-        async for chunk in async_gen:
-            if await request.is_disconnected():
-                logger.warning("客户端已断开连接...")
-                break
+            async for chunk in async_gen:
+                if await request.is_disconnected():
+                    logger.warning("客户端已断开连接...")
+                    break
 
-            if hasattr(chunk, "response_artifacts") and chunk.response_artifacts:
-                for artifact in chunk.response_artifacts:
+                if hasattr(chunk, "response_artifacts") and chunk.response_artifacts:
+                    for artifact in chunk.response_artifacts:
+                        yield {
+                            "event": "artifact",
+                            "data": artifact.model_dump_json(),
+                        }
+                else:
                     yield {
-                        "event": "artifact",
-                        "data": artifact.model_dump_json(),
+                        "event": "stream",
+                        "data": json.dumps({"delta": chunk.content}, ensure_ascii=False),
                     }
-            else:
-                yield {
-                    "event": "stream",
-                    "data": json.dumps({"delta": chunk.content}, ensure_ascii=False),
-                }
+        else:
+            response: AsyncIterator[WorkflowRunResponseEvent] = await handler.arun(message=user_message, stream=input.stream)
+
+            async for event in response:
+                if await request.is_disconnected():
+                    logger.warning("客户端已断开连接...")
+                    break
+
+                if event.event == RunResponseContentEvent.event:
+                    yield {
+                        "event": "stream",
+                        "data": json.dumps({"delta": event.content}, ensure_ascii=False),
+                    }
