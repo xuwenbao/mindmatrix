@@ -1,5 +1,5 @@
 from ._models import ZhipuAI, OpenAILike
-from ._base import BaseAgent, BaseWorkflow, Step, StepInput, StepOutput, MindmatrixRunResponse, Artifact
+from ._base import BaseAgent, BaseWorkflow, Step, StepInput, StepOutput, Artifact
 
 
 __all__ = [
@@ -11,5 +11,4 @@ __all__ = [
     "ZhipuAI", 
     "OpenAILike", 
     "Artifact", 
-    "MindmatrixRunResponse", 
 ]

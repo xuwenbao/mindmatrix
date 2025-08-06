@@ -7,7 +7,7 @@ from fastapi import HTTPException, Request
 from agno.agent import Agent
 from agno.workflow.v2.workflow import Workflow
 from agno.run.response import RunResponseContentEvent
-from agno.run.v2.workflow import WorkflowRunResponseEvent, WorkflowRunEvent
+from agno.run.v2.workflow import WorkflowRunResponseEvent
 
 
 class Message(BaseModel):
@@ -73,17 +73,10 @@ class SSEAdapter:
                     logger.warning("客户端已断开连接...")
                     break
 
-                if hasattr(chunk, "response_artifacts") and chunk.response_artifacts:
-                    for artifact in chunk.response_artifacts:
-                        yield {
-                            "event": "artifact",
-                            "data": artifact.model_dump_json(),
-                        }
-                else:
-                    yield {
-                        "event": "stream",
-                        "data": json.dumps({"delta": chunk.content}, ensure_ascii=False),
-                    }
+                yield {
+                    "event": "stream",
+                    "data": json.dumps({"delta": chunk.content}, ensure_ascii=False),
+                }
         else:
             response: AsyncIterator[WorkflowRunResponseEvent] = await handler.arun(message=user_message, stream=input.stream)
 
@@ -93,7 +86,14 @@ class SSEAdapter:
                     break
 
                 if event.event == RunResponseContentEvent.event:
-                    yield {
-                        "event": "stream",
-                        "data": json.dumps({"delta": event.content}, ensure_ascii=False),
-                    }
+                    if event.extra_data and "artifacts" in event.extra_data:
+                        for artifact in event.extra_data["artifacts"]:
+                            yield {
+                                "event": "artifact",
+                                "data": artifact.model_dump_json(),
+                            }
+                    else:
+                        yield {
+                            "event": "stream",
+                            "data": json.dumps({"delta": event.content}, ensure_ascii=False),
+                        }
