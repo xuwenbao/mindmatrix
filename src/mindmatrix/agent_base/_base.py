@@ -76,12 +76,12 @@ class BaseAgent(Agent):
             # 不抛出异常，避免影响主流程
     
 
-@dataclass
+@dataclass(init=False)
 class BaseWorkflow(WorkflowV2):
     pass
 
 
-@dataclass
+@dataclass(init=False)
 class Step(StepV2):
     pass
 
