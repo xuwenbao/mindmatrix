@@ -12,6 +12,7 @@ from agno.workflow import Workflow
 from agno.memory.v2 import Memory
 from agno.models.base import Model
 from agno.vectordb.base import VectorDb
+from agno.embedder.openai import OpenAIEmbedder
 
 from .builtins_.tasks import embed_documents
 from .knowledge_base import VectorDb, VectorDbProvider
@@ -78,6 +79,7 @@ class MindMatrix:
         *,
         llm: Union[Model, None] = None,
         memory: Union[Memory, None] = None,
+        embedder: Union[OpenAIEmbedder, None] = None,
         vectordb: Union[VectorDb, None] = None,
         enable_builtins: Union[None, bool] = None,
         enable_plugins: Union[None, bool] = None,
@@ -90,6 +92,7 @@ class MindMatrix:
 
         self._llm = llm
         self._memory = memory
+        self._embedder = embedder
         self._vectordb = vectordb
 
         # Register the converters
@@ -122,6 +125,10 @@ class MindMatrix:
     @property
     def memory(self) -> Memory:
         return self._memory
+
+    @property
+    def embedder(self) -> OpenAIEmbedder:
+        return self._embedder
 
     def enable_builtins(self, **kwargs) -> None:
         self.register_task(task_name="embed_documents", task=embed_documents)
@@ -212,7 +219,7 @@ class MindMatrix:
     ) -> Agent:
         for registration in self._agent_factories:
             if registration.name == agent_name:
-                return registration.agent_factory(**registration.agent_config, **kwargs)
+                return registration.agent_factory(self, **registration.agent_config, **kwargs) # TODO: 动态注入
         raise ValueError(f"Agent factory for {agent_name} not found")
     
     def get_workflow(
@@ -222,7 +229,7 @@ class MindMatrix:
     ) -> Workflow:
         for registration in self._workflow_factories:
             if registration.name == workflow_name:
-                return registration.workflow_factory(**registration.workflow_config, **kwargs)
+                return registration.workflow_factory(self, **registration.workflow_config, **kwargs) # TODO: 动态注入
         raise ValueError(f"Workflow factory for {workflow_name} not found")
 
     def get_task(
