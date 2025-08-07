@@ -1,4 +1,4 @@
-from .web import AgentProvider
+from .web import AgentProvider, get_current_workflow
 from ._mindmatrix import MindMatrix
 from .utils.http_client import AsyncHttpClient, SyncHttpClient
 from .utils.reranker_client import AsyncRerankerClient, RerankerClient
@@ -30,4 +30,5 @@ __all__ = [
     "Step",
     "StepInput",
     "StepOutput",
+    "get_current_workflow",
 ]

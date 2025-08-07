@@ -1,14 +1,15 @@
-import asyncio
 import json
-import logging
-from typing import AsyncGenerator, List, Optional, Any, Union, Dict
+import asyncio
+from typing import AsyncGenerator, AsyncIterator,List, Optional, Union
 
 from loguru import logger
 from pydantic import BaseModel, Field
-from agno.workflow import Workflow
-from agno.agent import Agent, RunResponse
 from fastapi import HTTPException
 from fastapi.responses import StreamingResponse
+from agno.agent import Agent, RunResponse
+from agno.workflow.v2.workflow import Workflow
+from agno.run.response import RunResponseContentEvent
+from agno.run.v2.workflow import WorkflowRunResponseEvent
 
 
 class Message(BaseModel):
@@ -180,6 +181,99 @@ class OpenAIAdapter:
             }
             yield f"data: {json.dumps(error_chunk)}\n\n"
             yield 'data: [DONE]\n\n'
+
+    @staticmethod
+    async def stream_workflow_response(workflow: Workflow, message: str) -> AsyncGenerator[str, None]:
+        """生成与OpenAI兼容的流式响应"""
+        logger.debug(f"Starting stream response for message: {message}")
+
+        try:
+            # 使用workflow生成流式响应
+            async_response: AsyncIterator[WorkflowRunResponseEvent] = await workflow.arun(message, stream=True)
+            logger.debug("Workflow response obtained, starting streaming")
+            
+            # 生成与OpenAI兼容的事件流
+            chunk_id = f"chatcmpl-{id(async_response)}"
+            created_time = int(asyncio.get_event_loop().time())
+            
+            # 发送开始事件
+            first_chunk = {
+                "id": chunk_id,
+                "object": "chat.completion.chunk",
+                "created": created_time,
+                "model": "deepseek-v3",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"role": "assistant"},
+                        "finish_reason": None
+                    }
+                ]
+            }
+            yield f"data: {json.dumps(first_chunk)}\n\n"
+            
+            # 迭代流式响应内容
+            async for event in async_response:
+                if event.event == RunResponseContentEvent.event:
+                    content = event.content
+                    try:
+                        logger.debug(f"Processing delta content: {content}")
+                    except UnicodeEncodeError:
+                        # 对于可能包含emoji的内容，使用更安全的记录方式
+                        logger.debug(f"Processing delta content: {repr(content)}")
+                    
+                    if content:
+                        chunk = {
+                            "id": chunk_id,
+                            "object": "chat.completion.chunk",
+                            "created": created_time,
+                            "model": "deepseek-v3",
+                            "choices": [
+                                {
+                                    "index": 0,
+                                    "delta": {"content": content},
+                                    "finish_reason": None
+                                }
+                            ]
+                        }
+                        yield f"data: {json.dumps(chunk)}\n\n"
+            
+            # 发送结束事件
+            last_chunk = {
+                "id": chunk_id,
+                "object": "chat.completion.chunk",
+                "created": created_time,
+                "model": "deepseek-v3",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {},
+                        "finish_reason": "stop"
+                    }
+                ]
+            }
+            yield f"data: {json.dumps(last_chunk)}\n\n"
+            
+            yield 'data: [DONE]\n\n'
+        
+        except Exception as e:
+            logger.error(f"Error in stream_response: {str(e)}")
+            # 返回错误信息
+            error_chunk = {
+                "id": f"chatcmpl-error",
+                "object": "chat.completion.chunk",
+                "created": int(asyncio.get_event_loop().time()),
+                "model": "deepseek-v3",
+                "choices": [
+                    {
+                        "index": 0,
+                        "delta": {"content": f"Error: {str(e)}"},
+                        "finish_reason": "error"
+                    }
+                ]
+            }
+            yield f"data: {json.dumps(error_chunk)}\n\n"
+            yield 'data: [DONE]\n\n'
             
     @staticmethod
     async def handle_chat_request(agent: Agent, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, StreamingResponse]:
@@ -206,7 +300,10 @@ class OpenAIAdapter:
         
         # 如果请求流式输出
         if request.stream:
-            raise NotImplementedError("Streaming response is not supported for workflow")
+            return StreamingResponse(
+                OpenAIAdapter.stream_workflow_response(workflow, user_message),
+                media_type="text/event-stream"
+            )
         
         # 非流式输出
         response = workflow.run(user_message)

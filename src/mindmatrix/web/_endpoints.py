@@ -7,6 +7,7 @@ from fastapi import APIRouter, Request
 from agno.memory.v2.schema import UserMemory
 from sse_starlette.sse import EventSourceResponse
 
+from ._contextvars import set_current_workflow
 from ._sse_adapter import SSEAdapter, ChatCompletionRequest as SSEChatCompletionRequest
 from ._openai_adapter import OpenAIAdapter, ChatCompletionRequest as OpenAIChatCompletionRequest
 
@@ -188,6 +189,7 @@ async def workflow_chat_completions(
     ```
     """
     workflow = router.agent_provider(input.model, type_="workflow")
+    set_current_workflow(workflow)
     return await OpenAIAdapter.handle_workflow_chat_request(workflow, input)
 
 
@@ -299,6 +301,10 @@ async def sse_chat_completions(
         user_id=input.user_id,
         session_id=session_id,
     )
+
+    if type == "workflow":
+        set_current_workflow(handler)
+
     sse_event_generator = SSEAdapter.handle_chat_request(request, handler, input, type=type)
     
     return EventSourceResponse(sse_event_generator)
