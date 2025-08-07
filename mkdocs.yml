@@ -1,0 +1,10 @@
+site_name: MindMatrix
+nav:
+  - 首页: index.md
+  - 智能体设计文档: agent-design.md
+  - 智能体实现说明: agents.md
+  - 核心模块说明: core.md
+  - API 实现说明: api.md
+  - 使用指南: usage.md
+theme:
+  name: material
