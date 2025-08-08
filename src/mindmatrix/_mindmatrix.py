@@ -8,7 +8,7 @@ from loguru import logger
 from fastapi import FastAPI
 from prefect.tasks import Task
 from agno.agent import Agent
-from agno.workflow import Workflow
+from agno.workflow.v2 import Workflow
 from agno.memory.v2 import Memory
 from agno.models.base import Model
 from agno.vectordb.base import VectorDb
@@ -16,7 +16,12 @@ from agno.embedder.openai import OpenAIEmbedder
 
 from .builtins_.tasks import embed_documents
 from .knowledge_base import VectorDb, VectorDbProvider
-from .web import create_app, AgentProvider, MemoryProvider
+from .web import (
+    create_app,
+    AgentProvider,
+    MemoryProvider,
+    get_current_workflow,
+)
 
 
 @dataclass(kw_only=True, frozen=True)
@@ -108,7 +113,11 @@ class MindMatrix:
 
         if enable_plugins:
             self.enable_plugins(**kwargs)
-        
+
+    @property
+    def current_workflow(self) -> Workflow:
+        return get_current_workflow()
+    
     @property
     def app(self) -> FastAPI:
         if self._app is None:

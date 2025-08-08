@@ -305,6 +305,6 @@ class OpenAIAdapter:
                 media_type="text/event-stream"
             )
         
-        # 非流式输出
-        response = workflow.run(user_message)
+        # 非流式输出 - 使用异步方法获取RunResponse
+        response = await workflow.arun(user_message)
         return OpenAIAdapter.create_completion_response(response, request.model)
