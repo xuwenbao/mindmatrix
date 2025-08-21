@@ -2,7 +2,7 @@ import inspect
 import traceback
 from dataclasses import dataclass
 from importlib.metadata import entry_points
-from typing import Union, Callable, List, Dict, Any
+from typing import Union, Callable, List, Dict, Any, Optional
 
 from loguru import logger
 from fastapi import FastAPI
@@ -270,3 +270,29 @@ class MindMatrix:
             kwargs['agent_provider'] = AgentProvider(self)
         
         return await task.fn(*args, **kwargs)
+
+    def start_web_server(
+        self,
+        host: str = "127.0.0.1",
+        port: int = 9527,
+        log_level: str = "debug",
+        **kwargs,
+    ) -> None:
+        try:
+            import uvicorn
+        except ImportError:
+            logger.error("uvicorn 未安装，请运行: pip install uvicorn")
+            return
+
+        logger.info(f"启动 MindMatrix Web 服务器...")
+        logger.info(f"服务器地址: http://{host}:{port}")
+        logger.info(f"API 文档: http://{host}:{port}/docs")
+        logger.info(f"交互式文档: http://{host}:{port}/redoc")
+        
+        try:
+            uvicorn.run(self.app, host=host, port=port, log_level=log_level, **kwargs)
+        except KeyboardInterrupt:
+            logger.info("服务器已停止")
+        except Exception as e:
+            logger.error(f"启动服务器时发生错误: {e}")
+            raise
