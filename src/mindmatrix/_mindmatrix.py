@@ -21,6 +21,7 @@ from .web import (
     AgentProvider,
     MemoryProvider,
     get_current_workflow,
+    set_current_workflow,
 )
 
 
@@ -115,8 +116,18 @@ class MindMatrix:
             self.enable_plugins(**kwargs)
 
     @property
-    def current_workflow(self) -> Workflow:
-        return get_current_workflow()
+    def current_workflow(self) -> Optional[Workflow]:
+        workflow = get_current_workflow()
+        if workflow is None:
+            logger.warning("current workflow is None, please set current workflow first")
+        return workflow
+    
+    @current_workflow.setter
+    def current_workflow(self, workflow: Workflow) -> None:
+        assert workflow is not None, "can't set current workflow to None"
+        
+        logger.debug(f"setting current workflow: {workflow}")
+        set_current_workflow(workflow)
     
     @property
     def app(self) -> FastAPI:
