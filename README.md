@@ -1,5 +1,7 @@
 # MindMatrix(灵枢)
 
+> 此项目目前还处于开发测试中，请等待项目正式发布 ...
+
 ## MindMatrix 是什么？
 
 MindMatrix 是一个基于 Agno 的轻量级智能体"应用"框架，专为快速构建具有RAG、记忆和可访问能力的生产级多智能体系统而设计。
@@ -136,41 +138,7 @@ python agent_factory.py
 
 ## 示例 - 实现一个简单工作流
 
-智能体是工作的原子单位，当工具数量增长超出模型处理能力或需要处理多个概念时，使用智能体团队来分散负载。
-
-```python
-from mindmatrix import MindMatrix
-
-# 创建 MindMatrix 实例
-mm = MindMatrix(
-    enable_builtins=True,
-    enable_plugins=True,
-)
-
-# 注册智能体工厂
-mm.register_agent_factory(
-    agent_name="web_agent",
-    agent_factory=lambda mm, **config: mm.get_agent("web_agent"),
-    agent_config={}
-)
-
-mm.register_agent_factory(
-    agent_name="finance_agent", 
-    agent_factory=lambda mm, **config: mm.get_agent("finance_agent"),
-    agent_config={}
-)
-
-# 注册工作流工厂
-mm.register_workflow_factory(
-    workflow_name="financial_report",
-    workflow_factory=lambda mm, **config: mm.get_workflow("financial_report"),
-    workflow_config={}
-)
-
-# 启动 Web 服务
-if __name__ == "__main__":
-    mm.start_web_server(host="127.0.0.1", port=9527)
-```
+TODO
 
 ## 项目结构
 
@@ -190,20 +158,4 @@ mindmatrix/
 
 ## 文档、社区和更多示例
 
-* 文档：[docs.mindmatrix.com](https://docs.mindmatrix.com)
-* 示例库：[Examples Gallery](https://github.com/mindmatrix/examples)
-* 社区论坛：[community.mindmatrix.com](https://community.mindmatrix.com)
-
-## 贡献
-
-我们欢迎贡献，请阅读我们的贡献指南开始。
-
-## 许可证
-
-本项目采用 MPL-2.0 许可证。
-
-## 关于
-
-MindMatrix 是一个基于 Agno 的开源框架，用于构建具有记忆、知识和推理能力的多智能体系统。
-
-⬆️ 回到顶部
+TODO
