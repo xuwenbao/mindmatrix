@@ -27,7 +27,7 @@ pip install -U mindmatrix
 
 ## 示例 - 实现一个简单智能体
 
-让我们构建一个智能体来感受 MindMatrix 的功能，智能体能力是基于[Agno Agent](https://docs.agno.com/agents/introduction)实现。
+让我们构建一个智能体来感受 MindMatrix 的功能。MindMatrix智能体是基于[Agno Agent](https://docs.agno.com/agents/introduction)实现的。
 
 完整代码可访问：[simple_agent.py](examples/simple_agent.py)
 
@@ -137,6 +137,86 @@ python simple_agent.py
 ```
 
 ## 示例 - 实现一个简单工作流
+
+让我们基于上面的chatter闲聊智能体，继续构建一个简单的工作流(Workflow)。MindMatrix工作流是基于[Agno Workflow(v2)](https://docs.agno.com/workflows_2/overview)实现的。
+
+在chatter闲聊智能体之前，我们添加一个50%概率返回固定内容的前置工作流步骤（Step），并将chatter闲聊智能体做为工作流的第二个步骤。
+
+首先，新增导入：
+
+```python
+from mindmatrix import (
+    MindMatrix, 
+    BaseAgent,
+    BaseWorkflow,
+    Step, 
+    StepInput,
+    StepOutput,
+    OpenAILike,
+)
+```
+
+然后，定义前置步骤函数（步骤可以是Agent，也可以是函数）:
+
+```python
+def random_step(step_input: StepInput) -> AsyncIterator[StepOutput | RunResponseContentEvent]:
+    if random.random() < 0.5:
+        # 50%概率返回固定内容
+        yield RunResponseContentEvent(content="我正在思考，请稍等...")
+        # 停止执行
+        yield StepOutput(content="这是一个固定内容", stop=True, success=True)
+    else:
+        # 50%概率返回上一级内容，继续执行
+        yield StepOutput(content=step_input.previous_step_content, stop=False)
+```
+
+然后，定义工作流：
+
+```python
+def create_workflow(mm: MindMatrix) -> BaseWorkflow:
+    return BaseWorkflow(
+        name="简单工作流",
+        steps=[
+            Step(name="random_step", description="随机步骤", executor=random_step),    # 前置步骤
+            Step(name="chatter", description="闲聊", agent=mm.get_agent("chatter")),  # 闲聊智能体
+        ],
+    )
+```
+
+最后，修改最终执行代码：
+
+```python
+if __name__ == "__main__":
+    ...
+
+    # 新增注册workflow
+    mm.register_workflow_factory(
+            workflow_name="simple_workflow",
+            workflow_factory=create_workflow,
+        )
+
+    ...
+
+    mm.start_web_server(host="127.0.0.1", port=9527)
+```
+
+完整代码可访问：[simple_workflow.py](examples/simple_workflow.py)
+
+代码修改完成后，安装依赖并运行工作流：
+
+```bash
+uv venv --python 3.12
+source .venv/bin/activate
+
+uv pip install mindmatrix
+
+export OPENAI_API_MODEL="gpt-4o-mini"
+export OPENAI_API_KEY="sk-xxxx"
+
+python simple_workflow.py
+```
+
+## 示例 - 实现一个简单插件
 
 TODO
 

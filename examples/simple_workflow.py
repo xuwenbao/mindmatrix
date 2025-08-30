@@ -1,7 +1,17 @@
 import os
-from typing import List, Callable
+import random
+from typing import List, Callable, AsyncIterator
 
-from mindmatrix import MindMatrix, BaseAgent, OpenAILike
+from agno.run.response import RunResponseContentEvent
+from mindmatrix import (
+    MindMatrix, 
+    BaseAgent,
+    BaseWorkflow,
+    Step, 
+    StepInput,
+    StepOutput,
+    OpenAILike,
+)
 
 
 # 智能体的角色
@@ -53,6 +63,27 @@ def create_chatter(
     )
 
 
+def random_step(step_input: StepInput) -> AsyncIterator[StepOutput | RunResponseContentEvent]:
+    if random.random() < 0.5:
+        # 50%概率返回固定内容
+        yield RunResponseContentEvent(content="我正在思考，请稍等...")
+        # 停止执行
+        yield StepOutput(content="这是一个固定内容", stop=True, success=True)
+    else:
+        # 50%概率返回上一级内容，继续执行
+        yield StepOutput(content=step_input.previous_step_content, stop=False)
+
+
+def create_workflow(mm: MindMatrix) -> BaseWorkflow:
+    return BaseWorkflow(
+        name="简单工作流",
+        steps=[
+            Step(name="random_step", description="随机步骤", executor=random_step),
+            Step(name="chatter", description="闲聊", agent=mm.get_agent("chatter")),
+        ],
+    )
+
+
 if __name__ == "__main__":
     # 请确保已设置以下环境变量，否则 OpenAILike 无法正常工作：
     # OPENAI_API_MODEL: 你的模型ID，例如 "gpt-4o-mini"
@@ -83,6 +114,10 @@ if __name__ == "__main__":
             "model": mm.llm,
             "debug_mode": True,
         },
+    )
+    mm.register_workflow_factory(
+        workflow_name="simple_workflow",
+        workflow_factory=create_workflow,
     )
 
     mm.start_web_server(host="127.0.0.1", port=9527)
