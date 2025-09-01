@@ -1,6 +1,6 @@
 [project]
 name = "mindmatrix"
-version = "0.1.0.post1"
+version = "0.1.0.post3"
 description = "MindMatrix 是一个基于 Agno 的轻量级智能体\"应用\"框架，专为快速构建具有RAG、记忆和可访问能力的生产级多智能体系统而设计。"
 readme = "README.md"
 requires-python = "<3.14,>=3.12"
@@ -10,6 +10,8 @@ dependencies = [
     "httpx[socks]>=0.28.1",
     "loguru>=0.7.3",
     "openai>=1.98.0",
+    "prefect>=3.4.14",
+    "pymilvus>=2.6.0",
     "sse-starlette>=3.0.2",
 ]
 
