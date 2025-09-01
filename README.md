@@ -218,7 +218,7 @@ python simple_workflow.py
 
 ## 示例 - 实现一个简单插件
 
-TODO
+请参照项目：[MindMatrix Sample Plugin](https://github.com/xuwenbao/mindmatrix-sample-plugin)
 
 ## 项目结构
 
