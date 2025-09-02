@@ -142,9 +142,14 @@ class MilvusAnnotatedResponseMixin:
         try:
             logger.info(f"Starting rerank for query: '{query}' with {len(documents)} documents")
             
-            results = await reranker_client.score(
+            # results = await reranker_client.score(
+            #     instruction=instruction, 
+            #     queries=[query] * len(documents), 
+            #     documents=documents,
+            # )
+            results = await reranker_client.rerank(
                 instruction=instruction, 
-                queries=[query] * len(documents), 
+                query=query, 
                 documents=documents,
             )
             if results and len(results) > 0:

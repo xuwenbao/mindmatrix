@@ -50,7 +50,7 @@ class AsyncRerankerClient(AsyncHttpClient):
         logger.debug(f"score response: {response}")
         return response["data"]["data"] # TODO: 处理HTTP Error
 
-    async def rerank(self, query: str, documents: List[str]) -> List[Dict[str, Any]]:
+    async def rerank(self, instruction: str, query: List[str], documents: List[str]) -> List[Dict[str, Any]]:
         """
         对文档进行重排序
         
@@ -62,6 +62,17 @@ class AsyncRerankerClient(AsyncHttpClient):
         Returns:
             重排序后的文档列表，包含分数和排名信息
         """
+        prefix = '<|im_start|>system\nJudge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>\n<|im_start|>user\n'
+        suffix = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
+
+        query_template = "{prefix}<Instruct>: {instruction}\n<Query>: {query}\n"
+        document_template = "<Document>: {doc}{suffix}"
+
+        query = query_template.format(prefix=prefix, instruction=instruction, query=query)
+        documents = [
+            document_template.format(doc=doc, suffix=suffix) for doc in documents
+        ]
+
         path = "/rerank"
         payload = {
             "model": self.model,
